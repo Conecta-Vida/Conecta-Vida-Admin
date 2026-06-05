@@ -30,7 +30,7 @@ export default function CampanhaDetalhes() {
       ...campanha,
       titulo: f.get("titulo") as string,
       descricao: f.get("descricao") as string,
-      status: f.get("status") as string,
+      status: f.get("status") as string, // Envia o valor padronizado em caixa alta para a API Java
     };
 
     try {
@@ -71,10 +71,11 @@ export default function CampanhaDetalhes() {
             <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Instruções Médicas / Descrição</Label><textarea name="descricao" defaultValue={campanha.descricao} required className="w-full min-h-[120px] border p-3 text-sm rounded-md bg-white focus:outline-none" /></div>
             <div className="grid gap-1.5">
               <Label className="font-bold text-slate-700">Status Operacional</Label>
-              <select name="status" defaultValue={campanha.status} className="h-10 border bg-white rounded-md px-3 text-sm">
-                <option value="Ativa">Ativa (Visível no App)</option>
-                <option value="Encerrada">Encerrada (Histórico)</option>
-                <option value="Agendada">Agendada (Oculta)</option>
+              {/* 🟢 OTIMIZADO: Ajustado values para caixa alta (enquanto o label visual continua amigável) */}
+              <select name="status" defaultValue={campanha.status?.toUpperCase()} className="h-10 border bg-white rounded-md px-3 text-sm">
+                <option value="ATIVA">Ativa (Visível no App)</option>
+                <option value="ENCERRADA">Encerrada (Histórico)</option>
+                <option value="AGENDADA">Agendada (Oculta)</option>
               </select>
             </div>
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 font-bold text-white h-11 gap-1 shadow mt-4"><Save className="w-4 h-4" /> Salvar Modificações</Button>

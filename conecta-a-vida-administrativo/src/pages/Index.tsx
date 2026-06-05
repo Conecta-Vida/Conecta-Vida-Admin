@@ -12,7 +12,7 @@ export default function Index() {
   useEffect(() => {
     const carregarDashboard = async () => {
       try {
-        // PERFORMANCE: Promise.all dispara as 3 requisições HTTP juntas em paralelo, deixando a tela muito mais rápida
+        // PERFORMANCE: Promise.all dispara as requisições HTTP juntas, acelerando o carregamento inicial
         const [dadosStats, dadosGrafico, dadosLogs] = await Promise.all([
           dashboardService.getStats(),
           dashboardService.getChartData(),
@@ -47,7 +47,7 @@ export default function Index() {
         <p className="text-slate-500 text-sm mt-1">Indicadores consolidados em tempo real do ecossistema Conecta à Vida.</p>
       </div>
 
-      {/* BLOCOS SUPERIORES (MÉTRICAS) */}
+      {/* BLOCOS SUPERIORES (MÉTRICAS COLETADAS DA API) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-none shadow-sm bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -94,7 +94,7 @@ export default function Index() {
         </Card>
       </div>
 
-      {/* BLOCOS GRÁFICO E TIMELINE */}
+      {/* SEÇÃO INFERIOR: GRÁFICO DE BARRAS E TRILHA DE LOGS */}
       <div className="grid gap-6 md:grid-cols-7">
         <Card className="md:col-span-4 border-none shadow-sm bg-white">
           <CardHeader>
@@ -118,6 +118,7 @@ export default function Index() {
           </CardContent>
         </Card>
 
+        {/* TIMELINE DE AUDITORIA */}
         <Card className="md:col-span-3 border-none shadow-sm bg-white">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

@@ -1,7 +1,7 @@
-const API_URL = 'http://localhost:8080/api';
+import axios from 'axios';
 
 // ===================================================================
-// CONTRATOS DE DADOS (INTERFACES)
+// CONTRATOS DE DADOS / INTERFACES (ALINHADOS COM AS ENTIDADES JAVA)
 // ===================================================================
 
 export interface Usuario {
@@ -12,6 +12,7 @@ export interface Usuario {
   idade?: number;
   sexo?: string;
   localizacao?: string; 
+  permissao?: string;
 }
 
 export interface InstituicaoSaude {
@@ -36,13 +37,13 @@ export interface LogAtividade {
 
 export interface Alerta {
   id?: number;
-  tipo: 'ALERTA';
+  tipo?: 'ALERTA';
   categoria: string; 
   titulo: string;
   descricao: string;
   localizacao?: string;
   lido: boolean;
-  dataPostada: string;
+  dataPostada?: string;
 }
 
 export interface Campanha {
@@ -51,12 +52,12 @@ export interface Campanha {
   titulo: string;
   descricao: string;
   categoria?: string;
-  publicoAlvo: string;
-  status: string; 
-  dataInicio: string;
-  dataFim: string;
   linkimagem?: string;
   localizacao?: string;
+  dataInicio: string;
+  dataFim: string;
+  publicoAlvo?: string;
+  status: string;
 }
 
 export interface DashboardStats {
@@ -72,215 +73,180 @@ export interface ChartData {
 }
 
 // ===================================================================
-// REQUISIÇÕES HTTP (SERVIÇOS ASSÍNCRONOS)
+// CONFIGURAÇÃO CENTRAL DA INSTÂNCIA DO AXIOS
+// ===================================================================
+
+const api = axios.create({
+  baseURL: 'http://localhost:8080/api', // Endereço IP local da API Spring Boot
+  timeout: 12000, // Cancela a requisição caso o servidor demore mais de 12 segundos
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * 🔒 INTERCEPTOR DE REQUISIÇÃO (REQUEST)
+ * Explicação para a banca: Intercepta qualquer chamada que sai do React para o Java.
+ * Se houver um token guardado no localStorage vindo do login, injeta-o automaticamente
+ * no cabeçalho Authorization como um token Bearer, protegendo a rota no back-end.
+ */
+api.interceptors.request.use(
+  (config) => {
+    const dadosSessao = localStorage.getItem('@conecta:admin');
+    if (dadosSessao) {
+      const { token } = JSON.parse(dadosSessao);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+/**
+ * 🛡️ INTERCEPTOR DE RESPOSTA (RESPONSE)
+ * Se o back-end Java retornar HTTP 401 (Não Autorizado), significa que a sessão expirou.
+ * O interceptor limpa o lixo de cache na hora e desloga o usuário por segurança.
+ */
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('@conecta:admin');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ===================================================================
+// MAPEAMENTO DOS MICROSSERVIÇOS DA API (SERVICOS ASSÍNCRONOS)
 // ===================================================================
 
 export const authService = {
-  // Autenticação básica (Login) - CR8
-  login: async (email: string, senha: string): Promise<Usuario> => {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, senha })
-    });
-
-    if (!response.ok) {
-      const erroDados = await response.json();
-      throw new Error(erroDados.mensagem || 'Falha na autenticação');
-    }
-    return response.json();
+  login: async (email: string, senha: string): Promise<any> => {
+    const response = await api.post('/auth/login', { email, senha });
+    return response.data;
   },
-
-  // NOVO: Registro obrigatório solicitado no CR8
-  register: async (dados: Usuario): Promise<Usuario> => {
-    const response = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-
-    if (!response.ok) {
-      const erroDados = await response.json();
-      throw new Error(erroDados.mensagem || 'Erro ao registrar nova credencial.');
-    }
-    return response.json();
-  },
-
-  // NOVO: Logout no Servidor solicitado no CR8
   logout: async (): Promise<void> => {
-    const response = await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (!response.ok) throw new Error('Falha ao sincronizar encerramento com a API.');
-  }
-};
-
-export const dashboardService = {
-  getStats: async (): Promise<DashboardStats> => {
-    const response = await fetch(`${API_URL}/dashboard/stats`);
-    if (!response.ok) throw new Error('Erro ao buscar estatísticas.');
-    return response.json();
-  },
-  getChartData: async (): Promise<ChartData[]> => {
-    const response = await fetch(`${API_URL}/dashboard/chart`);
-    if (!response.ok) throw new Error('Erro ao carregar dados do gráfico.');
-    return response.json();
-  }
-};
-
-export const logService = {
-  listarRecentes: async (): Promise<LogAtividade[]> => {
-    const response = await fetch(`${API_URL}/logs/recentes`); 
-    if (!response.ok) {
-      const fallback = await fetch(`${API_URL}/dashboard/logs/recentes`);
-      if (!fallback.ok) return [];
-      return fallback.json();
-    }
-    return response.json();
+    await api.post('/auth/logout');
   }
 };
 
 export const usuarioService = {
   listarTodos: async (): Promise<Usuario[]> => {
-    const response = await fetch(`${API_URL}/usuarios`);
-    if (!response.ok) throw new Error('Erro ao listar usuários.');
-    return response.json();
+    const response = await api.get('/usuarios');
+    return response.data;
   },
   cadastrar: async (dados: Usuario): Promise<Usuario> => {
-    const response = await fetch(`${API_URL}/usuarios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao cadastrar.');
-    return response.json();
+    const response = await api.post('/usuarios', dados);
+    return response.data;
   },
   atualizar: async (id: number, dados: Usuario): Promise<Usuario> => {
-    const response = await fetch(`${API_URL}/usuarios/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao atualizar.');
-    return response.json();
+    const response = await api.put(`/usuarios/${id}`, dados);
+    return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Erro ao remover usuário.');
-  },
-  exportarCsv: () => {
-    window.open(`${API_URL}/usuarios/exportar-csv`, '_blank');
+    await api.delete(`/usuarios/${id}`);
   },
   importarCsv: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_URL}/usuarios/importar-csv`, {
-      method: 'POST',
-      body: formData 
+    const response = await api.post('/usuarios/importar-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
-    if (!response.ok) {
-      const txtErro = await response.text();
-      throw new Error(txtErro || 'Erro ao processar arquivo CSV.');
-    }
-    return response.text();
-  },
-
-  // NOVO: Inscrição de Usuários em Campanhas (Muitos-para-Muitos - CR7)
-  inscreverEmCampanha: async (usuarioId: number, campanhaId: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/usuarios/${usuarioId}/campanhas/${campanhaId}`, {
-      method: 'POST'
-    });
-    if (!response.ok) throw new Error('Falha ao vincular cidadão à campanha.');
+    return response.data;
   }
 };
 
 export const instituicaoService = {
   listarTodas: async (): Promise<InstituicaoSaude[]> => {
-    const response = await fetch(`${API_URL}/instituicoes`);
-    if (!response.ok) throw new Error('Erro ao buscar instituições.');
-    return response.json();
+    const response = await api.get('/instituicoes');
+    return response.data;
   },
   cadastrar: async (dados: InstituicaoSaude): Promise<InstituicaoSaude> => {
-    const response = await fetch(`${API_URL}/instituicoes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao salvar instituição.');
-    return response.json();
+    const response = await api.post('/instituicoes', dados);
+    return response.data;
   },
   atualizar: async (id: number, dados: InstituicaoSaude): Promise<InstituicaoSaude> => {
-    const response = await fetch(`${API_URL}/instituicoes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao modificar dados.');
-    return response.json();
+    const response = await api.put(`/instituicoes/${id}`, dados);
+    return response.data;
+  },
+  deletar: async (id: number): Promise<void> => {
+    await api.delete(`/api/comunicacoes/${id}`); // Executa a exclusão polimórfica centralizada
   }
 };
 
 export const campanhaService = {
   listarTodas: async (): Promise<Campanha[]> => {
-    const response = await fetch(`${API_URL}/campanhas`);
-    if (!response.ok) throw new Error('Erro ao carregar campanhas.');
-    return response.json();
+    const response = await api.get('/campanhas');
+    return response.data;
   },
   buscarPorId: async (id: number): Promise<Campanha> => {
-    const response = await fetch(`${API_URL}/campanhas/${id}`);
-    if (!response.ok) throw new Error('Campanha não encontrada.');
-    return response.json();
+    const response = await api.get(`/campanhas/${id}`);
+    return response.data;
   },
   cadastrar: async (dados: Campanha): Promise<Campanha> => {
-    const response = await fetch(`${API_URL}/campanhas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao publicar.');
-    return response.json();
+    const response = await api.post('/comunicacoes', { ...dados, tipo: 'CAMPANHA' });
+    return response.data;
   },
   atualizar: async (id: number, dados: Campanha): Promise<Campanha> => {
-    const response = await fetch(`${API_URL}/campanhas/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao atualizar dados.');
-    return response.json();
+    const response = await api.put(`/campanhas/${id}`, dados);
+    return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/campanhas/${id}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Erro ao remover campanha.');
+    await api.delete(`/campanhas/${id}`);
   }
 };
 
 export const alertaService = {
   listarTodos: async (): Promise<Alerta[]> => {
-    const response = await fetch(`${API_URL}/alertas`);
-    if (!response.ok) throw new Error('Erro ao carregar alertas ativos.');
-    return response.json();
+    const response = await api.get('/alertas/ativos');
+    return response.data;
   },
   cadastrar: async (dados: Alerta): Promise<Alerta> => {
-    const response = await fetch(`${API_URL}/alertas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-    if (!response.ok) throw new Error('Erro ao emitir alerta emergencial.');
-    return response.json();
+    const response = await api.post('/comunicacoes', { ...dados, tipo: 'ALERTA', lido: false });
+    return response.data;
+  },
+  // 🟢 CORRIGIDO E ATIVADO: Método que faltava e causava o erro de compilação 2339 no Alertas.tsx
+  atualizar: async (id: number, dados: Alerta): Promise<Alerta> => {
+    const response = await api.put(`/alertas/${id}`, dados);
+    return response.data;
   },
   marcarComoLido: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/alertas/${id}/lido`, {
-      method: 'PUT'
-    });
-    if (!response.ok) throw new Error('Erro ao atualizar estado do alerta.');
+    await api.put(`/alertas/${id}`, { lido: true });
+  },
+  deletar: async (id: number): Promise<void> => {
+    await api.delete(`/alertas/${id}`);
+  }
+};
+
+export const dashboardService = {
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get('/dashboard/stats');
+    return response.data;
+  },
+  getChartData: async (): Promise<ChartData[]> => {
+    const response = await api.get('/dashboard/chart');
+    return response.data;
+  }
+};
+
+export const logService = {
+  listarRecentes: async (): Promise<LogAtividade[]> => {
+    const response = await api.get('/dashboard/logs/recentes');
+    return response.data;
   }
 };
 
 export const relatorioService = {
-  downloadUsuariosPdf: () => {
-    window.open(`${API_URL}/relatorios/usuarios`, '_blank');
+  getUrlDownloadPdf: (): string => {
+    return 'http://localhost:8080/api/relatorios/usuarios';
+  },
+  getUrlExportarCsv: (): string => {
+    return 'http://localhost:8080/api/usuarios/exportar-csv';
   }
 };
+
+export default api;

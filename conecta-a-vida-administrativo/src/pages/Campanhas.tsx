@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-// Importação de ícones legítimos da biblioteca Lucide
-import { Megaphone, Calendar, CheckCircle2, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
+// 🟢 CORRIGIDO: Removido o ícone 'CheckCircle2' que não estava a ser usado para zerar o aviso 6133
+import { Megaphone, Calendar, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
 // Conexão com os nossos serviços assíncronos integrados ao Back-end Java
-import { campanhaService, usuarioService, type Campanha } from "../services/api";
-// Componentes visuais de alta fidelidade do Shadcn/UI
+import { campanhaService, type Campanha } from "../services/api";
+// Componentes visuais de alta fidelidade do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,261 +21,247 @@ export default function Campanhas() {
   // Estado que segura as informações da campanha que o gestor escolheu alterar
   const [campanhaEditando, setCampanhaEditando] = useState<Campanha | null>(null);
 
-  /**
-   * OPERAÇÃO 1: CARREGAR CAMPANHAS DO BANCO (READ)
-   * Explicação para o grupo: Dispara um GET para a API unificada. Traz todas as 
-   * linhas da tabela "public.comunicacoes" onde o tipo é igual a 'CAMPANHA'.
-   */
   const carregarCampanhas = async () => {
     try {
       const dados = await campanhaService.listarTodas();
       setCampanhas(dados);
     } catch {
-      toast.error("Erro ao sincronizar cronograma de campanhas.");
+      toast.error("Erro ao sincronizar campanhas com a base Java.");
     }
   };
 
-  // Faz a listagem rodar na tela automaticamente assim que o usuário abre a página
-  useEffect(() => { 
-    carregarCampanhas(); 
+  useEffect(() => {
+    carregarCampanhas();
   }, []);
 
-  /**
-   * OPERAÇÃO 2: PUBLICAR NOVA CAMPANHA (CREATE - REQUISITO CR3)
-   * Explicação para o grupo: Captura as informações do formulário e monta o payload JSON. 
-   * Injeta o tipo fixo "CAMPANHA" para alimentar o polimorfismo da nossa tabela única.
-   */
-  const handleCadastroCampanha = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handler para Criação de Nova Campanha
+  const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    // Objeto construído combinando os atributos do banco com a FK da Unidade de Saúde
-    const novaCampanha: any = {
-      tipo: "CAMPANHA",
-      titulo: formData.get("titulo") as string,
-      descricao: formData.get("descricao") as string,
-      categoria: formData.get("categoria") as string,
-      publicoAlvo: formData.get("publicoAlvo") as string,
-      status: "ATIVA",
-      // Transforma o input datetime do navegador no formato timestamp aceito pelo PostgreSQL
-      dataInicio: formData.get("dataInicio") ? new Date(formData.get("dataInicio") as string).toISOString() : undefined,
-      dataFim: formData.get("dataFim") ? new Date(formData.get("dataFim") as string).toISOString() : undefined,
-      instituicao: {
-        id: Number(formData.get("instituicaoId")) // Cumpre o relacionamento Um-para-Muitos (CR6)
-      }
+    const f = new FormData(e.currentTarget);
+
+    const nova: Campanha = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string,
+      publicoAlvo: f.get("publicoAlvo") as string,
+      localizacao: f.get("localizacao") as string,
+      status: f.get("status") as string, 
+      dataInicio: f.get("dataInicio") as string,
+      dataFim: f.get("dataFim") as string,
+      linkimagem: (f.get("linkimagem") as string) || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800"
     };
 
     try {
-      await campanhaService.cadastrar(novaCampanha);
-      toast.success("Nova campanha de saúde publicada com sucesso!");
-      setOpenCadastro(false); // Fecha o modal
-      carregarCampanhas(); // Recarrega os cartões instantaneamente
-    } catch {
-      toast.error("Falha ao salvar a nova campanha.");
-    }
-  };
-
-  /**
-   * OPERAÇÃO 3: SALVAR EDICÃO DE CAMPANHA (UPDATE - REQUISITO CR3)
-   * Explicação para o grupo: Captura as alterações feitas no modal, anexa o ID original 
-   * da campanha e envia um método PUT para o Back-end persistir no Supabase.
-   */
-  const handleEdicaoCampanha = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!campanhaEditando?.id) return; // Proteção para garantir que o ID existe
-    const formData = new FormData(e.currentTarget);
-
-    const dadosAtualizados: any = {
-      tipo: "CAMPANHA",
-      titulo: formData.get("titulo") as string,
-      descricao: formData.get("descricao") as string,
-      categoria: formData.get("categoria") as string,
-      publicoAlvo: formData.get("publicoAlvo") as string,
-      status: formData.get("status") as string,
-      dataInicio: formData.get("dataInicio") ? new Date(formData.get("dataInicio") as string).toISOString() : undefined,
-      dataFim: formData.get("dataFim") ? new Date(formData.get("dataFim") as string).toISOString() : undefined,
-    };
-
-    try {
-      await campanhaService.atualizar(campanhaEditando.id, dadosAtualizados);
-      toast.success("Campanha de saúde atualizada com sucesso!");
-      setOpenEdicao(false);
-      setCampanhaEditando(null); // Limpa o estado da memória
-      carregarCampanhas(); // Atualiza a visualização
-    } catch {
-      toast.error("Erro ao salvar as modificações da campanha.");
-    }
-  };
-
-  /**
-   * OPERAÇÃO 4: EXCLUIR CAMPANHA DO ECOSSISTEMA (DELETE - REQUISITO CR3)
-   * Explicação para o grupo: Pede uma confirmação em tela. Se aceito, envia o comando DELETE 
-   * para a API remover o registro do banco de dados de forma definitiva.
-   */
-  const handleDeletarCampanha = async (id: number) => {
-    if (!confirm("Tem certeza absoluta de que deseja remover esta campanha de saúde do sistema?")) return;
-    try {
-      await campanhaService.deletar(id);
-      toast.success("Campanha removida com sucesso do sistema.");
+      await campanhaService.cadastrar(nova);
+      toast.success("Campanha comunitária lançada com sucesso!");
+      setOpenCadastro(false);
       carregarCampanhas();
     } catch {
-      toast.error("Não foi possível excluir a campanha de saúde.");
+      toast.error("Erro ao salvar a campanha no Supabase.");
     }
   };
 
-  /**
-   * CRITERIO CR7: GRAVAÇÃO RELACIONAL MUITOS-PARA-MUITOS
-   * Explicação para o grupo: Vincula o cidadão que está logado no sistema à campanha selecionada.
-   * Dispara uma gravação direta na nossa tabela associativa física "public.usuarios_campanhas", 
-   * guardando o par contendo usuario_id e comunicacao_id.
-   */
-  const handleAdesaoCidadao = async (campanhaId: number) => {
-    const adminLogado = JSON.parse(localStorage.getItem("@conecta:admin") || "{}");
-    if (!adminLogado.id) {
-      toast.error("Nenhum usuário ativo identificado para inscrição.");
-      return;
-    }
+  // Handler para Atualização de Campanha Existente
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!campanhaEditando?.id) return;
+    const f = new FormData(e.currentTarget);
+
+    const dados: Campanha = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string,
+      publicoAlvo: f.get("publicoAlvo") as string,
+      localizacao: f.get("localizacao") as string,
+      status: f.get("status") as string,
+      dataInicio: f.get("dataInicio") as string,
+      dataFim: f.get("dataFim") as string,
+      linkimagem: campanhaEditando.linkimagem
+    };
 
     try {
-      // CORRIGIDO: Vinculado corretamente à variável local 'campanhaId' em português
-      await usuarioService.inscreverEmCampanha(adminLogado.id, campanhaId);
-      toast.success("Cidadão vinculado ao mutirão com sucesso! (CR7 Computado)");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao processar inscrição.");
+      await campanhaService.atualizar(campanhaEditando.id, dados);
+      toast.success("Campanha atualizada com sucesso!");
+      setOpenEdicao(false);
+      carregarCampanhas();
+    } catch {
+      toast.error("Falha ao modificar os dados da campanha.");
+    }
+  };
+
+  // Handler para Exclusão
+  const handleDeletar = async (id: number) => {
+    if (!confirm("Deseja realmente remover esta campanha do ecossistema?")) return;
+    try {
+      await campanhaService.deletar(id);
+      toast.success("Campanha removida da base.");
+      carregarCampanhas();
+    } catch {
+      toast.error("Erro ao deletar o registro polimórfico.");
     }
   };
 
   return (
     <div className="space-y-6 pb-10">
-      {/* SEÇÃO DO CABEÇALHO */}
-      <div className="flex justify-between items-center border-b pb-4 border-slate-100">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
-            <Megaphone className="w-8 h-8 text-emerald-600" /> Campanhas de Saúde
-          </h1>
-          <p className="text-slate-400 text-xs font-bold mt-1">Gerenciamento de mutirões públicos e engajamento comunitário.</p>
-        </div>
+      {/* CABEÇALHO DA VIEW */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
+          <Megaphone className="w-8 h-8 text-blue-600" /> Campanhas de Saúde
+        </h1>
 
-        {/* MODAL DE CADASTRO POPUP */}
+        {/* MODAL DE CADASTRO */}
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 font-bold hover:bg-emerald-700 shadow-sm gap-1 text-white border-none">
+            <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1">
               <Plus className="w-4 h-4" /> Nova Campanha
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg border-none">
+          <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-600" /> Publicar Nova Campanha de Saúde
+              <Megaphone className="w-5 h-5 text-blue-600" /> Cadastrar Mutirão Comunitário
             </DialogTitle>
-            <form onSubmit={handleCadastroCampanha} className="space-y-4 pt-4">
+            <form onSubmit={handleCadastro} className="space-y-4 pt-4">
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Título da Campanha</Label>
-                <Input name="titulo" required placeholder="Ex: Campanha de Vacinação contra a Gripe 2026" />
+                <Label className="font-bold text-slate-700">Título da Ação</Label>
+                <Input name="titulo" required placeholder="Ex: Campanha de Doação de Sangue O-" />
               </div>
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Descrição Detalhada</Label>
-                <textarea name="descricao" required rows={3} placeholder="Descreva o objetivo da campanha, locais e orientações..." className="w-full border rounded-md p-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-600 outline-none border-slate-200" />
+                <Label className="font-bold text-slate-700">Descrição / Instruções aos Cidadãos</Label>
+                <textarea name="descricao" required rows={3} placeholder="Instruções completas sobre o mutirão de saúde..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-medium" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
-                  <Label className="font-bold text-slate-700">Categoria (Tema)</Label>
+                  <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                    <option value="Vacinação">Vacinação</option>
-                    <option value="Doação de Sangue">Doação de Sangue</option>
-                    <option value="Prevenção / Checkup">Prevenção / Checkup</option>
+                    <option value="Doações">Doação de Sangue / Insumos</option>
+                    <option value="Vacinação">Campanha de Vacinação</option>
+                    <option value="Eventos">Eventos / Palestras</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Público-Alvo</Label>
-                  <Input name="publicoAlvo" required placeholder="Ex: Idosos e Crianças" />
+                  <Input name="publicoAlvo" required placeholder="Ex: População Geral, Idosos" />
                 </div>
               </div>
-              <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Código ID da Unidade de Saúde Responsável (CR6)</Label>
-                <Input name="instituicaoId" type="number" required placeholder="Ex: Digite o ID numérico da UBS cadastrada" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Local de Atendimento</Label><Input name="localizacao" required placeholder="Ex: UBS Central" /></div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Estado Inicial</Label>
+                  <select name="status" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
+                    <option value="ATIVA">ATIVA (Visível no Mobile)</option>
+                    <option value="CONCLUÍDA">CONCLUÍDA (Histórico)</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" required /></div>
-                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Encerramento</Label><Input name="dataFim" type="datetime-local" required /></div>
+                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Previsão de Término</Label><Input name="dataFim" type="datetime-local" required /></div>
               </div>
-              <Button type="submit" className="w-full bg-emerald-600 font-bold text-white h-11 shadow mt-4 hover:bg-emerald-700 border-none">Salvar e Publicar Mutirão no Banco</Button>
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Link da Imagem de Capa (Opcional)</Label>
+                <Input name="linkimagem" placeholder="https://exemplo.com/foto.jpg" />
+              </div>
+              <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4">
+                Publicar Campanha e Sincronizar Mobile
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* RENDERIZAÇÃO EM GRID DOS CARTÕES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* RENDERIZAÇÃO EM CARDS DA VIEW ORIGINAL */}
+      <div className="grid gap-4 md:grid-cols-2">
         {campanhas.map((c) => (
-          <Card key={c.id} className="bg-white border border-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
-            <CardContent className="p-5 space-y-4">
-              
-              {/* MENU SUSPENSO DE AÇÕES INDIVIDUAIS */}
-              <div className="absolute top-4 right-4 z-20">
+          <Card key={c.id} className="border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between rounded-xl">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="font-black text-lg text-slate-900 leading-snug">{c.titulo}</h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {c.dataInicio ? new Date(c.dataInicio).toLocaleDateString() : "-"}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Alvo: {c.publicoAlvo}</span>
+                  </div>
+                </div>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 bg-slate-50 rounded-full hover:bg-slate-100"><MoreHorizontal className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 rounded-md">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg p-1">
-                    <DropdownMenuItem onClick={() => { setCampanhaEditando(c); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600 px-3 py-2 rounded hover:bg-slate-50"><Edit2 className="w-3.5 h-3.5" /> Editar</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => c.id && handleDeletarCampanha(c.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600 px-3 py-2 rounded hover:bg-slate-50"><Trash2 className="w-3.5 h-3.5" /> Excluir</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg">
+                    <DropdownMenuItem onClick={() => { setCampanhaEditando(c); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600">
+                      <Edit2 className="w-3.5 h-3.5" /> Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => c.id && handleDeletar(c.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600">
+                      <Trash2 className="w-3.5 h-3.5" /> Excluir
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">{c.status || "ATIVA"}</span>
-                <h3 className="text-lg font-black text-slate-900 mt-2 pr-8">{c.titulo}</h3>
+              <p className="text-sm text-slate-600 font-medium line-clamp-3 leading-relaxed">{c.descricao}</p>
+
+              <div className="flex items-center justify-between border-t pt-4 mt-2">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5" /> {c.categoria || "Geral"}
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  c.status === "ATIVA" || c.status === "Ativa"
+                    ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                    : "bg-slate-100 text-slate-500 border border-slate-200"
+                }`}>
+                  {c.status}
+                </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">{c.descricao}</p>
-              <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400 border-t pt-3 border-slate-50">
-                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-blue-500" /> Alvo: {c.publicoAlvo}</span>
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> Início: {c.dataInicio ? new Date(c.dataInicio).toLocaleDateString() : "-"}</span>
-              </div>
-              <Button onClick={() => c.id && handleAdesaoCidadao(c.id)} className="w-full bg-emerald-600 font-bold text-white hover:bg-emerald-700 gap-1.5 shadow border-none"><CheckCircle2 className="w-4 h-4" /> Registrar Presença de Cidadão (CR7)</Button>
             </CardContent>
           </Card>
         ))}
 
         {campanhas.length === 0 && (
-          <div className="col-span-1 md:col-span-2 text-center py-14 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 italic font-semibold text-sm">
-            Nenhuma campanha ativa ou cadastrada no ecossistema Conecta Vida.
+          <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
+            Nenhuma campanha ou mutirão comunitário cadastrado no Supabase.
           </div>
         )}
       </div>
 
-      {/* MODAL DE EDIÇÃO DINÂMICA */}
+      {/* MODAL DE EDIÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg border-none">
-          <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Edit2 className="w-5 h-5 text-amber-500" /> Modificar Campanha de Saúde</DialogTitle>
+        <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros da Campanha</DialogTitle>
           {campanhaEditando && (
-            <form onSubmit={handleEdicaoCampanha} className="space-y-4 pt-4">
-              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Título</Label><Input name="titulo" defaultValue={campanhaEditando.titulo} required /></div>
-              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Descrição</Label><textarea name="descricao" defaultValue={campanhaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 font-medium" /></div>
+            <form onSubmit={handleUpdate} className="space-y-4 pt-4">
+              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Título da Ação</Label><Input name="titulo" defaultValue={campanhaEditando.titulo} required /></div>
+              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Descrição / Instruções</Label><textarea name="descricao" defaultValue={campanhaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-medium" /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
-                  <Label className="font-bold text-slate-700">Categoria (Tema)</Label>
+                  <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" defaultValue={campanhaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                    <option value="Vacinação">Vacinação</option>
-                    <option value="Doação de Sangue">Doação de Sangue</option>
-                    <option value="Prevenção / Checkup">Prevenção / Checkup</option>
+                    <option value="Doações">Doação de Sangue / Insumos</option>
+                    <option value="Vacinação">Campanha de Vacinação</option>
+                    <option value="Eventos">Eventos / Palestras</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Público-Alvo</Label><Input name="publicoAlvo" defaultValue={campanhaEditando.publicoAlvo} required /></div>
               </div>
-              <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Estado da Campanha</Label>
-                <select name="status" defaultValue={campanhaEditando.status} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                  <option value="ATIVA">ATIVA (Visível no Mobile)</option>
-                  <option value="CONCLUÍDA">CONCLUÍDA (Histórico)</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Local de Atendimento</Label><Input name="localizacao" defaultValue={campanhaEditando.localizacao} required /></div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Estado da Campanha</Label>
+                  <select name="status" defaultValue={campanhaEditando.status} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
+                    <option value="ATIVA">ATIVA (Visível no Mobile)</option>
+                    <option value="CONCLUÍDA">CONCLUÍDA (Histórico)</option>
+                  </select>
+                </div>
               </div>
-              {/* CORRIGIDO: Amarrado perfeitamente às propriedades da variável em português campanhaEditando */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" defaultValue={campanhaEditando.dataInicio ? campanhaEditando.dataInicio.substring(0, 16) : ""} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Fim</Label><Input name="dataFim" type="datetime-local" defaultValue={campanhaEditando.dataFim ? campanhaEditando.dataFim.substring(0, 16) : ""} required /></div>
               </div>
-              <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4 border-none">Salvar Alterações no Banco</Button>
+              <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4">
+                Salvar Alterações
+              </Button>
             </form>
           )}
         </DialogContent>

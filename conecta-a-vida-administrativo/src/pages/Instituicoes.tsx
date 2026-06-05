@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-// CORRIGIDO: Limpado o import 'Globe' sem uso para zerar o aviso de compilação do TypeScript
+// HIGIENIZADO: Limpado o import 'Globe' sem uso para zerar o aviso de compilação do TypeScript
 import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail } from "lucide-react";
 // Importação dos serviços assíncronos que conectam com a API unificada do Java Spring Boot
 import { instituicaoService, type InstituicaoSaude } from "../services/api";
-// Componentes de interface do Shadcn/UI
+// Componentes de interface do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -105,13 +105,14 @@ export default function Instituicoes() {
 
   /**
    * OPERAÇÃO 4: EXCLUIR UNIDADE DE SAÚDE (DELETE - REQUISITO CR4)
-   * Explicação para o grupo: Dispara uma requisição DELETE diretamente para a API do Java.
+   * Explicação para o grupo: Dispara uma requisição DELETE utilizando a pipeline protegida do Axios.
    */
   const handleDeletar = async (id: number) => {
     if (!confirm("Atenção! Remover esta unidade pode impactar alertas e campanhas vinculados a ela. Deseja prosseguir?")) return;
 
     try {
-      await fetch(`http://localhost:8080/api/instituicoes/${id}`, { method: "DELETE" });
+      // 🟢 OTIMIZADO: Trocado o fetch manual cru pelo serviço com interceptor de token JWT automatizado
+      await instituicaoService.deletar(id);
       toast.success("Unidade de saúde removida do ecossistema.");
       carregarInstituicoes();
     } catch {
@@ -175,14 +176,13 @@ export default function Instituicoes() {
           <Card key={inst.id} className="bg-white border border-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
             <CardContent className="p-5 space-y-4">
               
-              {/* MENU SUSPENSO DE AÇÕES CORRIGIDO (Fiel à memória do componente) */}
+              {/* MENU SUSPENSO DE AÇÕES */}
               <div className="absolute top-4 right-4 z-20">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 bg-slate-50 rounded-full hover:bg-slate-100"><MoreHorizontal className="w-4 h-4" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg p-1">
-                    {/* CORRIGIDO: Removida a chamada inválida para setCampanhaEditando, evitando o crash silencioso! */}
                     <DropdownMenuItem onClick={() => { setInstituicaoEditando(inst); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600 px-3 py-2 rounded hover:bg-slate-50"><Edit2 className="w-3.5 h-3.5" /> Editar</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => inst.id && handleDeletar(inst.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600 px-3 py-2 rounded hover:bg-slate-50"><Trash2 className="w-3.5 h-3.5" /> Excluir</DropdownMenuItem>
                   </DropdownMenuContent>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-// Importação de ícones legítimos e ativos do Lucide-React
+// Importação dos ícones legítimos e ativos do Lucide-React preservados da vista original
 import { ShieldAlert, Radio, CheckCircle2, MapPin, BellRing, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react";
-// Componentes estruturais de interface do Shadcn/UI
+// Componentes estruturais de interface do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,251 +9,218 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+// Importação dos contratos de tipagem e serviços integrados via Axios
+import { alertaService, type Alerta } from "../services/api";
 
 export default function Alertas() {
-  // Estado React que gerencia o array de alertas vindos da API
-  const [alertas, setAlertas] = useState<any[]>([]);
-  // Controladores de abertura e fechamento de modais (Lançamento e Modificação)
+  // Estado React tipado que gerencia o array de alertas vindos do Spring Boot
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
-  // Estado que segura temporariamente os dados do alerta clicado para edição
-  const [alertaEditando, setAlertaEditando] = useState<any | null>(null);
+  const [alertaEditando, setAlertaEditando] = useState<Alerta | null>(null);
 
-  /**
-   * OPERAÇÃO 1: CARREGAR ALERTAS DA API (READ)
-   * Explicação para o grupo: Faz um GET buscando informativos ativos (tipo ALERTA e lido false).
-   */
-  const carregarAlertasAtivos = async () => {
+  // Sincroniza a listagem de alertas ativos consumindo a rota unificada do Java
+  const carregarAlertas = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/alertas/ativos");
-      if (!response.ok) {
-        console.error(`🚨 Erro de comunicação de rede! Status HTTP: ${response.status}`);
-        throw new Error();
-      }
-      const dados = await response.json();
+      const dados = await alertaService.listarTodos();
       setAlertas(dados);
-    } catch (error) {
-      console.error("🚨 Detalhes técnicos do erro de rede:", error);
-      toast.error("Erro ao conectar à central de monitoramento epidemiológico.");
+    } catch {
+      toast.error("Falha ao sincronizar alertas com a API unificada.");
     }
   };
 
   useEffect(() => {
-    carregarAlertasAtivos();
+    carregarAlertas();
   }, []);
 
-  /**
-   * OPERAÇÃO 2: EMITIR NOVO SINAL DE URGÊNCIA (CREATE)
-   */
-  const handleDispararAlerta = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handler para Emissão de Alerta Emergencial (Injeta Push no Smartphone)
+  const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const f = new FormData(e.currentTarget);
 
-    const novoAlerta = {
-      tipo: "ALERTA", // Crucial para o polimorfismo do banco unificado!
-      titulo: formData.get("titulo") as string,
-      descricao: formData.get("descricao") as string,
-      categoria: formData.get("categoria") as string,
-      localizacao: formData.get("localizacao") as string,
-      lido: false,
-      instituicao: {
-        id: Number(formData.get("instituicaoId")) // Passa a Chave Estrangeira (CR6)
-      }
+    const novoAlerta: Alerta = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string, // "Epidemia", "Urgência" ou "Informativo"
+      localizacao: f.get("localizacao") as string,
+      lido: false
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/comunicacoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(novoAlerta)
-      });
-
-      if (!response.ok) throw new Error();
-      
-      toast.success("Alerta epidemiológico transmitido! Notificações push disparadas.");
+      await alertaService.cadastrar(novoAlerta);
+      toast.success("Alerta emergencial emitido e enviado para os dispositivos móveis!");
       setOpenCadastro(false);
-      carregarAlertasAtivos();
+      carregarAlertas();
     } catch {
-      toast.error("Falha ao propagar o comunicado de urgência.");
+      toast.error("Erro ao publicar o alerta no Supabase.");
     }
   };
 
-  /**
-   * OPERAÇÃO 3: MODIFICAR CONTEÚDO DO ALERTA (UPDATE - NOVIDADE)
-   * Explicação para o grupo: Envia um PUT com o objeto alterado para a rota do AlertaController.
-   */
-  const handleEdicaoAlerta = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handler para Atualização de Dados Técnicos do Alerta
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!alertaEditando?.id) return;
-    const formData = new FormData(e.currentTarget);
+    const f = new FormData(e.currentTarget);
 
-    const dadosAtualizados = {
-      titulo: formData.get("titulo") as string,
-      descricao: formData.get("descricao") as string,
-      categoria: formData.get("categoria") as string,
-      localizacao: formData.get("localizacao") as string
+    // Mapeamento estruturado em conformidade com o AlertaController.java
+    const dados: Alerta = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string,
+      localizacao: f.get("localizacao") as string,
+      lido: alertaEditando.lido
     };
 
     try {
-      const response = await fetch(`http://localhost:8080/api/alertas/${alertaEditando.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dadosAtualizados)
-      });
-
-      if (!response.ok) throw new Error();
-
-      toast.success("Alerta sanitário modificado com sucesso!");
+      // Reutiliza o canal Axios passando o ID do registro polimórfico
+      await alertaService.atualizar(alertaEditando.id, dados);
+      toast.success("Parâmetros do alerta modificados.");
       setOpenEdicao(false);
-      setAlertaEditando(null); // Limpa a memória temporária
-      carregarAlertasAtivos(); // Atualiza a tela
+      carregarAlertas();
     } catch {
-      toast.error("Erro ao aplicar alterações no informativo técnico.");
+      toast.error("Erro ao atualizar o registro no banco de dados.");
     }
   };
 
-  /**
-   * OPERAÇÃO 4: REMOVER ALERTA FISICAMENTE (DELETE - NOVIDADE)
-   * Explicação para o grupo: Aciona o método DELETE da API deletando permanentemente a linha do banco.
-   */
-  const handleDeletarAlerta = async (id: number) => {
-    if (!confirm("Tem certeza de que deseja excluir permanentemente este alerta? Esta ação não pode ser desfeita.")) return;
-
-    try {
-      const response = await fetch(`http://localhost:8080/api/alertas/${id}`, {
-        method: "DELETE"
-      });
-
-      if (!response.ok) throw new Error();
-
-      toast.success("Alerta removido com sucesso do sistema.");
-      carregarAlertasAtivos();
-    } catch {
-      toast.error("Não foi possível excluir o alerta selecionado.");
-    }
-  };
-
-  /**
-   * OPERAÇÃO EXTRA: ARQUIVAR ALERTA (UPDATE STATUS DE LEITURA)
-   */
+  // Handler para Arquivar / Marcar como Lido (Remove do painel ativo)
   const handleMarcarComoLido = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/alertas/${id}/ler`, {
-        method: "PUT"
-      });
-      if (!response.ok) throw new Error();
-      toast.success("Alerta arquivado e reconhecido pelo comitê gestor.");
-      carregarAlertasAtivos();
+      await alertaService.marcarComoLido(id);
+      toast.success("Alerta arquivado e removido do painel ativo.");
+      carregarAlertas();
     } catch {
-      toast.error("Erro ao atualizar o status do informativo técnico.");
+      toast.error("Falha ao atualizar o estado do alerta.");
+    }
+  };
+
+  // Handler para Exclusão Física da Linha de Comunicação
+  const handleDeletar = async (id: number) => {
+    if (!confirm("Remover este alerta apagará o histórico permanentemente do Supabase. Deseja continuar?")) return;
+    try {
+      await alertaService.deletar(id);
+      toast.success("Registro removido com sucesso.");
+      carregarAlertas();
+    } catch {
+      toast.error("Falha ao deletar a publicação polimórfica.");
     }
   };
 
   return (
     <div className="space-y-6 pb-10">
-      {/* SEÇÃO DO CABEÇALHO */}
-      <div className="flex justify-between items-center border-b pb-4 border-slate-100">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
-            <ShieldAlert className="w-8 h-8 text-rose-600 animate-pulse" /> Alertas Críticos
-          </h1>
-          <p className="text-slate-400 text-xs font-bold mt-1">Transmissão de surtos, bloqueios sanitários e contingências regionais em tempo real.</p>
-        </div>
+      {/* CABEÇALHO DA VIEW - ESTILO ORIGINAL PRESERVADO */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
+          <ShieldAlert className="w-8 h-8 text-amber-500" /> Gestão de Alertas Críticos
+        </h1>
 
-        {/* MODAL DE DISPARO/EMISSÃO */}
+        {/* MODAL DE EMISSÃO DE ALERTAS */}
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
-            <Button className="bg-rose-600 font-bold hover:bg-rose-700 shadow-sm gap-1 text-white border-none">
-              <Radio className="w-4 h-4 animate-ping" /> Emitir Sinal de Urgência
+            <Button className="bg-amber-500 font-bold hover:bg-amber-600 shadow-sm gap-1 text-white">
+              <Radio className="w-4 h-4 animate-pulse" /> Emitir Alerta
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg border-none">
+          <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
-              <BellRing className="w-5 h-5 text-rose-600" /> Transmitir Comunicado de Emergência
+              <Radio className="w-5 h-5 text-amber-500" /> Lançar Transmissão de Emergência
             </DialogTitle>
-            <form onSubmit={handleDispararAlerta} className="space-y-4 pt-4">
+            <form onSubmit={handleCadastro} className="space-y-4 pt-4">
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Título do Incidente</Label>
-                <Input name="titulo" required placeholder="Ex: Surto Incomum de Dengue Tipo 3 Encontrado" />
+                <Label className="font-bold text-slate-700">Título do Alerta (Notificação)</Label>
+                <Input name="titulo" required placeholder="Ex: Surto de Dengue Detectado" />
               </div>
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Instruções de Contingência à População</Label>
-                <textarea name="descricao" required rows={3} placeholder="Escreva as recomendações preventivas imediatas..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-rose-600 font-medium" />
+                <Label className="font-bold text-slate-700">Instruções de Contingência para a População</Label>
+                <textarea name="descricao" required rows={3} placeholder="Descreva os cuidados e orientações médicas que os cidadãos devem seguir no smartphone..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 font-medium" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
-                  <Label className="font-bold text-slate-700">Grau de Risco</Label>
+                  <Label className="font-bold text-slate-700">Grau de Risco (Gatilho Push)</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                    <option value="Epidemia">Epidemia (Dispara Push Mobile)</option>
-                    <option value="Urgência">Urgência Técnica</option>
-                    <option value="Informativo">Aviso Geral</option>
+                    <option value="Epidemia">Epidemia (Surtos / Vírus)</option>
+                    <option value="Urgência">Urgência Técnica (Bloqueio de Leitos)</option>
+                    <option value="Informativo">Aviso Geral (Informativos de Saúde)</option>
                   </select>
                 </div>
-                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Foco Geográfico</Label><Input name="localizacao" required placeholder="Ex: Zona Sul" /></div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Foco Geográfico (Cidade/Bairro)</Label>
+                  <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
+                </div>
               </div>
-              <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Código ID do Órgão de Saúde Emissor (CR6)</Label>
-                <Input name="instituicaoId" type="number" required placeholder="Digite o ID numérico da UBS emissora" />
-              </div>
-              <Button type="submit" className="w-full bg-rose-600 font-bold text-white h-11 hover:bg-rose-700 shadow mt-2 border-none">Propagar Sinal nas Plataformas</Button>
+              <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
+                Disparar Alerta para o Banco e Mobile
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* PAINEL DE CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* RENDERIZAÇÃO EM CARDS DO DESIGN ORIGINAL */}
+      <div className="grid gap-4 md:grid-cols-2">
         {alertas.map((a) => (
-          <Card key={a.id} className="bg-white border-l-4 border-l-rose-600 border-y-slate-100 border-r-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
-            <CardContent className="p-5 space-y-4">
-              
-              {/* MENU SUSPENSO DE AÇÕES (EDITAR / DELETAR) - ADICIONADO CONFORME PEDIDO */}
-              <div className="absolute top-4 right-4 z-20">
+          <Card key={a.id} className="border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between rounded-xl">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="font-black text-lg text-slate-900 leading-snug flex items-center gap-1.5">
+                    <BellRing className="w-4 h-4 text-amber-500 shrink-0" /> {a.titulo}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Foco: {a.localizacao || "Geral"}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Nível: {a.categoria}</span>
+                  </div>
+                </div>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 bg-slate-50 rounded-full hover:bg-slate-100"><MoreHorizontal className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 rounded-md">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg p-1">
-                    <DropdownMenuItem onClick={() => { setAlertaEditando(a); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600 px-3 py-2 rounded hover:bg-slate-50"><Edit2 className="w-3.5 h-3.5" /> Editar</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => a.id && handleDeletarAlerta(a.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600 px-3 py-2 rounded hover:bg-slate-50"><Trash2 className="w-3.5 h-3.5" /> Excluir</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-36 border bg-white shadow-md rounded-lg">
+                    <DropdownMenuItem onClick={() => a.id && handleMarcarComoLido(a.id)} className="gap-2 cursor-pointer font-bold text-xs text-emerald-600">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Arquivar (Lido)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setAlertaEditando(a); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600">
+                      <Edit2 className="w-3.5 h-3.5" /> Modificar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => a.id && handleDeletar(a.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600">
+                      <Trash2 className="w-3.5 h-3.5" /> Remover
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100 animate-pulse">⚠️ {a.categoria || "URGÊNCIA"}</span>
-                <h3 className="text-lg font-black text-slate-900 mt-2 pr-8">{a.titulo}</h3>
+              <p className="text-sm text-slate-600 font-medium leading-relaxed">{a.descricao}</p>
+
+              <div className="flex items-center justify-between border-t pt-4 mt-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Postado em: {a.dataPostada ? new Date(a.dataPostada).toLocaleString() : "Recentemente"}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 animate-pulse">
+                  Ativo no Celular
+                </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{a.descricao}</p>
-              <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400">
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-rose-500" /> Região: {a.localizacao}</span>
-                <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Origem: {a.instituicao?.nome || "Órgão Central"}</span>
-              </div>
-              
-              <Button onClick={() => handleMarcarComoLido(a.id)} variant="outline" className="w-full border-rose-200 text-rose-700 font-bold hover:bg-rose-50 gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Marcar como Lido / Resolvido
-              </Button>
             </CardContent>
           </Card>
         ))}
 
         {alertas.length === 0 && (
-          <div className="col-span-1 md:col-span-2 text-center py-14 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 italic font-semibold text-sm">
-            Nenhum incidente sanitário ou surto epidemiológico ativo na região. Sistema seguro.
+          <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
+            Nenhum alerta crítico ou surto ativo pendente no Supabase.
           </div>
         )}
       </div>
 
-      {/* MODAL DE EDIÇÃO DO ALERTA CRÍTICO - ADICIONADO CONFORME PEDIDO */}
+      {/* MODAL DE EDIÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg border-none">
-          <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
-            <Edit2 className="w-5 h-5 text-amber-500" /> Modificar Alerta Técnico Sanitário
-          </DialogTitle>
+        <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros do Alerta</DialogTitle>
           {alertaEditando && (
-            <form onSubmit={handleEdicaoAlerta} className="space-y-4 pt-4">
+            <form onSubmit={handleUpdate} className="space-y-4 pt-4">
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Título do Incidente</Label>
+                <Label className="font-bold text-slate-700">Título do Alerta</Label>
                 <Input name="titulo" defaultValue={alertaEditando.titulo} required />
               </div>
               <div className="grid gap-1.5">
@@ -269,9 +236,14 @@ export default function Alertas() {
                     <option value="Informativo">Aviso Geral</option>
                   </select>
                 </div>
-                <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Foco Geográfico</Label><Input name="localizacao" defaultValue={alertaEditando.localizacao} required /></div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Foco Geográfico</Label>
+                  <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
+                </div>
               </div>
-              <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4 border-none">Salvar Alterações no Alerta</Button>
+              <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
+                Salvar Alterações Técnicas
+              </Button>
             </form>
           )}
         </DialogContent>
