@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
-// HIGIENIZADO: Limpado o import 'Globe' sem uso para zerar o aviso de compilação do TypeScript
 import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail } from "lucide-react";
-// Importação dos serviços assíncronos que conectam com a API unificada do Java Spring Boot
 import { instituicaoService, type InstituicaoSaude } from "../services/api";
-// Componentes de interface do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,19 +10,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner";
 
 export default function Instituicoes() {
-  // Estado que armazena o array de UBSs/Hospitais puxados do Supabase
   const [instituicoes, setInstituicoes] = useState<InstituicaoSaude[]>([]);
-  // Controles de abertura e fechamento de modais
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
-  // Estado que guarda qual unidade de saúde o gestor quer alterar
   const [instituicaoEditando, setInstituicaoEditando] = useState<InstituicaoSaude | null>(null);
 
-  /**
-   * OPERAÇÃO 1: BUSCAR UNIDADES CADASTRADAS (READ - REQUISITO CR4)
-   * Explicação para o grupo: Dispara um GET para a rota unificada da API. 
-   * Lê todas as linhas da tabela física "public.instituicoes_saude".
-   */
   const carregarInstituicoes = async () => {
     try {
       const dados = await instituicaoService.listarTodas();
@@ -39,17 +28,12 @@ export default function Instituicoes() {
     carregarInstituicoes();
   }, []);
 
-  /**
-   * OPERAÇÃO 2: REGISTRAR NOVA UNIDADE MÉDICA (CREATE - REQUISITO CR4)
-   * Explicação para o grupo: Pega os campos de endereço, telefone e horários, 
-   * monta o objeto estruturado e envia um POST para o Back-end Java.
-   */
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
 
     const novaUnidade: InstituicaoSaude = {
-      tipoInstituicao: f.get("tipoInstituicao") as string, // Ex: "UBS", "Hospital", "Hemocentro"
+      tipoInstituicao: f.get("tipoInstituicao") as string, 
       nome: f.get("nome") as string,
       email: f.get("email") as string || undefined,
       telefone: f.get("telefone") as string,
@@ -70,11 +54,6 @@ export default function Instituicoes() {
     }
   };
 
-  /**
-   * OPERAÇÃO 3: ATUALIZAR CADASTRO DA UNIDADE (UPDATE - REQUISITO CR4)
-   * Explicação para o grupo: Pega as alterações feitas na tabela de horários ou contatos, 
-   * anexa o ID original e envia via PUT para a API unificada salvar no banco.
-   */
   const handleEdicao = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!instituicaoEditando?.id) return;
@@ -103,15 +82,9 @@ export default function Instituicoes() {
     }
   };
 
-  /**
-   * OPERAÇÃO 4: EXCLUIR UNIDADE DE SAÚDE (DELETE - REQUISITO CR4)
-   * Explicação para o grupo: Dispara uma requisição DELETE utilizando a pipeline protegida do Axios.
-   */
   const handleDeletar = async (id: number) => {
     if (!confirm("Atenção! Remover esta unidade pode impactar alertas e campanhas vinculados a ela. Deseja prosseguir?")) return;
-
     try {
-      // 🟢 OTIMIZADO: Trocado o fetch manual cru pelo serviço com interceptor de token JWT automatizado
       await instituicaoService.deletar(id);
       toast.success("Unidade de saúde removida do ecossistema.");
       carregarInstituicoes();
@@ -130,14 +103,14 @@ export default function Instituicoes() {
           <p className="text-slate-400 text-xs font-bold mt-1">Gestão de infraestrutura médica, postos de vacinação e hospitais parceiros.</p>
         </div>
 
-        {/* MODAL DE CADASTRO */}
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1 text-white border-none">
               <Plus className="w-4 h-4" /> Nova Unidade
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
+          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Plus className="w-5 h-5 text-blue-600" /> Cadastrar Ponto de Atendimento Médico
             </DialogTitle>
@@ -170,13 +143,11 @@ export default function Instituicoes() {
         </Dialog>
       </div>
 
-      {/* LISTAGEM DOS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {instituicoes.map((inst) => (
           <Card key={inst.id} className="bg-white border border-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
             <CardContent className="p-5 space-y-4">
               
-              {/* MENU SUSPENSO DE AÇÕES */}
               <div className="absolute top-4 right-4 z-20">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -208,9 +179,9 @@ export default function Instituicoes() {
         ))}
       </div>
 
-      {/* MODAL DE ALTERAÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
+        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Edit2 className="w-5 h-5 text-amber-500" /> Atualizar Unidade de Saúde</DialogTitle>
           {instituicaoEditando && (
             <form onSubmit={handleEdicao} className="space-y-4 pt-4">

@@ -30,7 +30,6 @@ export default function Usuarios() {
     carregarUsuarios();
   }, []);
 
-  // Filtragem inteligente em memória via useMemo
   const filtrados = useMemo(() => {
     const termo = busca.toLowerCase();
     return usuarios.filter(
@@ -40,20 +39,18 @@ export default function Usuarios() {
     );
   }, [usuarios, busca]);
 
-  // Handler para Criar Novo Usuário / Administrador
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     
-    // 🟢 CORRIGIDO PARA O GRUPO: 'idado' alterado para 'idade' e cargo mapeado na variável 'permissao'
     const novo: Usuario = {
       nome: f.get("nome") as string,
       email: f.get("email") as string,
       senha: (f.get("senha") as string) || "123456", 
       idade: f.get("idade") ? Number(f.get("idade")) : undefined, 
       sexo: (f.get("sexo") as string) || undefined,
-      localizacao: "Bragança Paulista", // Seta a cidade padrão para administradores cadastrados na Web
-      permissao: f.get("permissao") as string, // Agora salva na coluna correta do banco!
+      localizacao: "Bragança Paulista", 
+      permissao: f.get("permissao") as string, 
     };
 
     try {
@@ -66,13 +63,11 @@ export default function Usuarios() {
     }
   };
 
-  // Handler para Atualizar Usuário / Administrador existente
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!usuarioEditando?.id) return;
     const f = new FormData(e.currentTarget);
 
-    // 🟢 CORRIGIDO PARA O GRUPO: Alinhada a atualização cadastral para o campo 'permissao'
     const dados: Usuario = {
       nome: f.get("nome") as string,
       email: f.get("email") as string,
@@ -92,7 +87,6 @@ export default function Usuarios() {
     }
   };
 
-  // Handler para Remover Registro
   const handleDeletar = async (id: number) => {
     if (!confirm("Tem certeza que deseja remover este registro do sistema?")) return;
     try {
@@ -104,7 +98,6 @@ export default function Usuarios() {
     }
   };
 
-  // Handler para Importação em Lote de Planilha CSV
   const handleImportarCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -120,20 +113,16 @@ export default function Usuarios() {
 
   return (
     <div className="space-y-6 pb-10">
-      {/* CABEÇALHO DA VIEW - DESIGN ORIGINAL PRESERVADO */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
           <Users className="w-8 h-8 text-blue-600" /> Controle de Usuários
         </h1>
         
-        {/* GRUPO DE BOTÕES DE AÇÃO */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* 🟢 OTIMIZADO: Vinculado ao microsserviço de download de PDF via Axios */}
           <Button variant="outline" onClick={() => window.open(relatorioService.getUrlDownloadPdf(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <FileText className="w-4 h-4 text-red-500" /> Exportar PDF
           </Button>
           
-          {/* 🟢 OTIMIZADO: Vinculado ao microsserviço de exportação de CSV via Axios */}
           <Button variant="outline" onClick={() => window.open(relatorioService.getUrlExportarCsv(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <Download className="w-4 h-4 text-emerald-600" /> Exportar CSV
           </Button>
@@ -143,15 +132,14 @@ export default function Usuarios() {
             <input type="file" accept=".csv" onChange={handleImportarCsv} className="hidden" />
           </label>
 
-          {/* MODAL DE CADASTRO */}
           <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1">
                 <Plus className="w-4 h-4" /> Novo Registro
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl">
-              {/* 🟢 CORRIGIDO: Removido o erro de string 'pb-3EMA' */}
+            {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+            <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl">
               <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-blue-600" /> Cadastrar Usuário ou Administrador
               </DialogTitle>
@@ -180,7 +168,6 @@ export default function Usuarios() {
                 </div>
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Nível de Permissão (Cargo)</Label>
-                  {/* 🟢 CORRIGIDO: Alterado name para 'permissao' para casar com a coluna do banco de dados */}
                   <select name="permissao" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold focus:ring-2 focus:ring-blue-600">
                     <option value="Usuário Comum">Usuário Comum (Cidadão)</option>
                     <option value="Administrador">Administrador (Gestor de Saúde)</option>
@@ -195,7 +182,6 @@ export default function Usuarios() {
         </div>
       </div>
 
-      {/* BARRA DE PESQUISA */}
       <div className="relative">
         <Input
           placeholder="Buscar cidadão por nome ou e-mail..."
@@ -205,7 +191,6 @@ export default function Usuarios() {
         />
       </div>
 
-      {/* TABELA DE DADOS - CORES E FONTES PRESERVADAS */}
       <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-xl">
         <Table>
           <TableHeader className="bg-slate-50/70 border-b border-slate-100">
@@ -226,7 +211,6 @@ export default function Usuarios() {
                   {u.idade ? `${u.idade} anos` : "-"} / {u.sexo || "-"}
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  {/* 🟢 CORRIGIDO: Validação baseada no atributo 'permissao' real da API */}
                   <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${
                     u.permissao === 'Administrador' || u.permissao === 'ADMINISTRADOR'
                       ? 'bg-purple-100 text-purple-700 border border-purple-200'
@@ -265,9 +249,9 @@ export default function Usuarios() {
         </Table>
       </Card>
 
-      {/* MODAL DE EDIÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-xl">
+        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Editar Dados de Registro</DialogTitle>
           {usuarioEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
@@ -279,7 +263,6 @@ export default function Usuarios() {
               </div>
               <div className="grid gap-1.5">
                 <Label>Nível de Permissão (Cargo)</Label>
-                {/* 🟢 CORRIGIDO: Alterado name para 'permissao' e defaultValue mapeando o cargo do usuário */}
                 <select name="permissao" defaultValue={usuarioEditando.permissao || "Usuário Comum"} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold">
                   <option value="Usuário Comum">Usuário Comum (Cidadão)</option>
                   <option value="Administrador">Administrador (Gestor de Saúde)</option>

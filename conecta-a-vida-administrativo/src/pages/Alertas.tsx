@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-// Importação dos ícones legítimos e ativos do Lucide-React preservados da vista original
 import { ShieldAlert, Radio, CheckCircle2, MapPin, BellRing, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react";
-// Componentes estruturais de interface do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,17 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-// Importação dos contratos de tipagem e serviços integrados via Axios
 import { alertaService, type Alerta } from "../services/api";
 
 export default function Alertas() {
-  // Estado React tipado que gerencia o array de alertas vindos do Spring Boot
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [alertaEditando, setAlertaEditando] = useState<Alerta | null>(null);
 
-  // Sincroniza a listagem de alertas ativos consumindo a rota unificada do Java
   const carregarAlertas = async () => {
     try {
       const dados = await alertaService.listarTodos();
@@ -33,7 +28,6 @@ export default function Alertas() {
     carregarAlertas();
   }, []);
 
-  // Handler para Emissão de Alerta Emergencial (Injeta Push no Smartphone)
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -41,7 +35,7 @@ export default function Alertas() {
     const novoAlerta: Alerta = {
       titulo: f.get("titulo") as string,
       descricao: f.get("descricao") as string,
-      categoria: f.get("categoria") as string, // "Epidemia", "Urgência" ou "Informativo"
+      categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
       lido: false
     };
@@ -56,13 +50,11 @@ export default function Alertas() {
     }
   };
 
-  // Handler para Atualização de Dados Técnicos do Alerta
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!alertaEditando?.id) return;
     const f = new FormData(e.currentTarget);
 
-    // Mapeamento estruturado em conformidade com o AlertaController.java
     const dados: Alerta = {
       titulo: f.get("titulo") as string,
       descricao: f.get("descricao") as string,
@@ -72,7 +64,6 @@ export default function Alertas() {
     };
 
     try {
-      // Reutiliza o canal Axios passando o ID do registro polimórfico
       await alertaService.atualizar(alertaEditando.id, dados);
       toast.success("Parâmetros do alerta modificados.");
       setOpenEdicao(false);
@@ -82,7 +73,6 @@ export default function Alertas() {
     }
   };
 
-  // Handler para Arquivar / Marcar como Lido (Remove do painel ativo)
   const handleMarcarComoLido = async (id: number) => {
     try {
       await alertaService.marcarComoLido(id);
@@ -93,7 +83,6 @@ export default function Alertas() {
     }
   };
 
-  // Handler para Exclusão Física da Linha de Comunicação
   const handleDeletar = async (id: number) => {
     if (!confirm("Remover este alerta apagará o histórico permanentemente do Supabase. Deseja continuar?")) return;
     try {
@@ -107,20 +96,19 @@ export default function Alertas() {
 
   return (
     <div className="space-y-6 pb-10">
-      {/* CABEÇALHO DA VIEW - ESTILO ORIGINAL PRESERVADO */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
           <ShieldAlert className="w-8 h-8 text-amber-500" /> Gestão de Alertas Críticos
         </h1>
 
-        {/* MODAL DE EMISSÃO DE ALERTAS */}
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
             <Button className="bg-amber-500 font-bold hover:bg-amber-600 shadow-sm gap-1 text-white">
               <Radio className="w-4 h-4 animate-pulse" /> Emitir Alerta
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Radio className="w-5 h-5 text-amber-500" /> Lançar Transmissão de Emergência
             </DialogTitle>
@@ -155,7 +143,6 @@ export default function Alertas() {
         </Dialog>
       </div>
 
-      {/* RENDERIZAÇÃO EM CARDS DO DESIGN ORIGINAL */}
       <div className="grid gap-4 md:grid-cols-2">
         {alertas.map((a) => (
           <Card key={a.id} className="border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between rounded-xl">
@@ -213,9 +200,9 @@ export default function Alertas() {
         )}
       </div>
 
-      {/* MODAL DE EDIÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros do Alerta</DialogTitle>
           {alertaEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
@@ -242,7 +229,7 @@ export default function Alertas() {
                 </div>
               </div>
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
-                Salvar Alterações Técnicas
+                Salvar Alterações Técnico-Operacionais
               </Button>
             </form>
           )}

@@ -78,7 +78,7 @@ export interface ChartData {
 
 const api = axios.create({
   baseURL: 'http://localhost:8080/api', // Endereço IP local da API Spring Boot
-  timeout: 12000, // Cancela a requisição caso o servidor demore mais de 12 segundos
+  timeout: 12000, 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -86,9 +86,7 @@ const api = axios.create({
 
 /**
  * 🔒 INTERCEPTOR DE REQUISIÇÃO (REQUEST)
- * Explicação para a banca: Intercepta qualquer chamada que sai do React para o Java.
- * Se houver um token guardado no localStorage vindo do login, injeta-o automaticamente
- * no cabeçalho Authorization como um token Bearer, protegendo a rota no back-end.
+ * Injeta o token Bearer automaticamente se o usuário estiver autenticado.
  */
 api.interceptors.request.use(
   (config) => {
@@ -106,8 +104,7 @@ api.interceptors.request.use(
 
 /**
  * 🛡️ INTERCEPTOR DE RESPOSTA (RESPONSE)
- * Se o back-end Java retornar HTTP 401 (Não Autorizado), significa que a sessão expirou.
- * O interceptor limpa o lixo de cache na hora e desloga o usuário por segurança.
+ * Desloga o usuário se o token expirar (HTTP 401).
  */
 api.interceptors.response.use(
   (response) => response,
@@ -174,7 +171,8 @@ export const instituicaoService = {
     return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    await api.delete(`/api/comunicacoes/${id}`); // Executa a exclusão polimórfica centralizada
+    // 🟢 CORRIGIDO: Removido prefixo duplicado /api/ e apontado para a rota certa do back-end
+    await api.delete(`/instituicoes/${id}`);
   }
 };
 
@@ -196,7 +194,8 @@ export const campanhaService = {
     return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    await api.delete(`/campanhas/${id}`);
+    // 🟢 CORRIGIDO: Campanhas são deletadas via fluxo unificado de comunicações no Java
+    await api.delete(`/comunicacoes/${id}`);
   }
 };
 
@@ -209,7 +208,6 @@ export const alertaService = {
     const response = await api.post('/comunicacoes', { ...dados, tipo: 'ALERTA', lido: false });
     return response.data;
   },
-  // 🟢 CORRIGIDO E ATIVADO: Método que faltava e causava o erro de compilação 2339 no Alertas.tsx
   atualizar: async (id: number, dados: Alerta): Promise<Alerta> => {
     const response = await api.put(`/alertas/${id}`, dados);
     return response.data;
@@ -218,7 +216,8 @@ export const alertaService = {
     await api.put(`/alertas/${id}`, { lido: true });
   },
   deletar: async (id: number): Promise<void> => {
-    await api.delete(`/alertas/${id}`);
+    // 🟢 CORRIGIDO: Alertas também são removidos de forma polimórfica pela rota unificada
+    await api.delete(`/comunicacoes/${id}`);
   }
 };
 
@@ -245,7 +244,7 @@ export const relatorioService = {
     return 'http://localhost:8080/api/relatorios/usuarios';
   },
   getUrlExportarCsv: (): string => {
-    return 'http://localhost:8080/api/usuarios/exportar-csv';
+    return 'http://localhost:8080/api/relatorios/usuarios/csv'; // 🟢 CORRIGIDO: Aponta para a nova rota oficial de download de CSV do RelatorioController
   }
 };
 

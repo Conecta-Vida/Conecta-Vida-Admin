@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
-// 🟢 CORRIGIDO: Removido o ícone 'CheckCircle2' que não estava a ser usado para zerar o aviso 6133
 import { Megaphone, Calendar, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
-// Conexão com os nossos serviços assíncronos integrados ao Back-end Java
 import { campanhaService, type Campanha } from "../services/api";
-// Componentes visuais de alta fidelidade do Shadcn/UI - DESIGN ORIGINAL PRESERVADO
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,12 +10,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner";
 
 export default function Campanhas() {
-  // Estado React que armazena a lista de campanhas puxadas do Supabase
   const [campanhas, setCampanhas] = useState<Campanha[]>([]);
-  // Controladores de abertura e fechamento das janelas modais popup
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
-  // Estado que segura as informações da campanha que o gestor escolheu alterar
   const [campanhaEditando, setCampanhaEditando] = useState<Campanha | null>(null);
 
   const carregarCampanhas = async () => {
@@ -34,7 +28,6 @@ export default function Campanhas() {
     carregarCampanhas();
   }, []);
 
-  // Handler para Criação de Nova Campanha
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -61,7 +54,6 @@ export default function Campanhas() {
     }
   };
 
-  // Handler para Atualização de Campanha Existente
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!campanhaEditando?.id) return;
@@ -89,7 +81,6 @@ export default function Campanhas() {
     }
   };
 
-  // Handler para Exclusão
   const handleDeletar = async (id: number) => {
     if (!confirm("Deseja realmente remover esta campanha do ecossistema?")) return;
     try {
@@ -103,20 +94,19 @@ export default function Campanhas() {
 
   return (
     <div className="space-y-6 pb-10">
-      {/* CABEÇALHO DA VIEW */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
           <Megaphone className="w-8 h-8 text-blue-600" /> Campanhas de Saúde
         </h1>
 
-        {/* MODAL DE CADASTRO */}
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1">
               <Plus className="w-4 h-4" /> Nova Campanha
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Megaphone className="w-5 h-5 text-blue-600" /> Cadastrar Mutirão Comunitário
             </DialogTitle>
@@ -169,7 +159,6 @@ export default function Campanhas() {
         </Dialog>
       </div>
 
-      {/* RENDERIZAÇÃO EM CARDS DA VIEW ORIGINAL */}
       <div className="grid gap-4 md:grid-cols-2">
         {campanhas.map((c) => (
           <Card key={c.id} className="border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between rounded-xl">
@@ -226,9 +215,9 @@ export default function Campanhas() {
         )}
       </div>
 
-      {/* MODAL DE EDIÇÃO */}
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        <DialogContent className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros da Campanha</DialogTitle>
           {campanhaEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
