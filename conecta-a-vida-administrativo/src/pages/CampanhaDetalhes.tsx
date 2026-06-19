@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function CampanhaDetalhes() {
-  const { id } = useParams(); // Captura o ID vindo diretamente na URL (/campanhas/5)
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const [campanha, setCampanha] = useState<Campanha | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function CampanhaDetalhes() {
       ...campanha,
       titulo: f.get("titulo") as string,
       descricao: f.get("descricao") as string,
-      status: f.get("status") as string, // Envia o valor padronizado em caixa alta para a API Java
+      status: f.get("status") as string, 
     };
 
     try {
@@ -60,25 +60,24 @@ export default function CampanhaDetalhes() {
     <div className="space-y-6 max-w-3xl mx-auto pb-10">
       <Button variant="ghost" size="sm" onClick={() => navigate("/campanhas")} className="gap-1 font-bold text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Voltar</Button>
       
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
         <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-black flex items-center gap-1.5"><Megaphone className="w-5 h-5 text-blue-600" /> Detalhes operacionais</CardTitle>
-          <Button variant="destructive" size="sm" onClick={handleDeletar} className="font-bold gap-1"><Trash2 className="w-4 h-4" /> Encerrar</Button>
+          <Button variant="destructive" size="sm" onClick={handleDeletar} className="font-bold gap-1 border-none shadow-sm"><Trash2 className="w-4 h-4" /> Encerrar</Button>
         </CardHeader>
         <CardContent className="p-6">
           <form onSubmit={handleSalvar} className="space-y-4">
             <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Título da Campanha</Label><Input name="titulo" defaultValue={campanha.titulo} required /></div>
-            <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Instruções Médicas / Descrição</Label><textarea name="descricao" defaultValue={campanha.descricao} required className="w-full min-h-[120px] border p-3 text-sm rounded-md bg-white focus:outline-none" /></div>
+            <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Instruções Médicas / Descrição</Label><textarea name="descricao" defaultValue={campanha.descricao} required className="w-full min-h-[120px] border p-3 text-sm rounded-md bg-white border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-medium" /></div>
             <div className="grid gap-1.5">
               <Label className="font-bold text-slate-700">Status Operacional</Label>
-              {/* 🟢 OTIMIZADO: Ajustado values para caixa alta (enquanto o label visual continua amigável) */}
-              <select name="status" defaultValue={campanha.status?.toUpperCase()} className="h-10 border bg-white rounded-md px-3 text-sm">
+              <select name="status" defaultValue={campanha.status?.toUpperCase()} className="h-10 border bg-white border-slate-200 rounded-md px-3 text-sm font-semibold focus:ring-2 focus:ring-blue-600 w-full">
                 <option value="ATIVA">Ativa (Visível no App)</option>
                 <option value="ENCERRADA">Encerrada (Histórico)</option>
                 <option value="AGENDADA">Agendada (Oculta)</option>
               </select>
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 font-bold text-white h-11 gap-1 shadow mt-4"><Save className="w-4 h-4" /> Salvar Modificações</Button>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 font-bold text-white h-11 gap-1 shadow mt-4 border-none"><Save className="w-4 h-4" /> Salvar Modificações</Button>
           </form>
         </CardContent>
       </Card>

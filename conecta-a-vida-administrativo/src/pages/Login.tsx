@@ -32,8 +32,9 @@ export default function Login() {
       toast.success(`Bem-vindo de volta, ${usuarioLogado.nome}!`);
       navigate("/"); // Redireciona imediatamente para a home (Dashboard)
     } catch (error: any) {
-      // Captura a mensagem customizada enviada pelo Spring Boot (Ex: "Você não tem credencial liberada")
-      toast.error(error.message || "Erro ao tentar realizar o login.");
+      // 🟢 AJUSTE DE OURO: Captura a mensagem customizada em formato JSON enviada pelo AuthController do Spring Boot
+      const mensagemServidor = error.response?.data?.mensagem;
+      toast.error(mensagemServidor || error.message || "Erro ao tentar realizar o login.");
     } finally {
       setLoading(false);
     }

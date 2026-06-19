@@ -47,7 +47,7 @@ export default function Usuarios() {
       nome: f.get("nome") as string,
       email: f.get("email") as string,
       senha: (f.get("senha") as string) || "123456", 
-      idade: f.get("idade") ? Number(f.get("idade")) : undefined, 
+      dataNascimento: f.get("dataNascimento") ? Number(f.get("dataNascimento")) : undefined, // 🟢 dataNascimento
       sexo: (f.get("sexo") as string) || undefined,
       localizacao: "Bragança Paulista", 
       permissao: f.get("permissao") as string, 
@@ -71,7 +71,7 @@ export default function Usuarios() {
     const dados: Usuario = {
       nome: f.get("nome") as string,
       email: f.get("email") as string,
-      idade: f.get("idade") ? Number(f.get("idade")) : undefined,
+      dataNascimento: f.get("dataNascimento") ? Number(f.get("dataNascimento")) : undefined, // 🟢 dataNascimento
       sexo: (f.get("sexo") as string) || undefined,
       localizacao: usuarioEditando.localizacao || "Bragança Paulista",
       permissao: f.get("permissao") as string,
@@ -79,7 +79,7 @@ export default function Usuarios() {
 
     try {
       await usuarioService.atualizar(usuarioEditando.id, dados);
-      toast.success("Dados updated com sucesso!");
+      toast.success("Dados atualizados com sucesso!");
       setOpenEdicao(false);
       carregarUsuarios();
     } catch {
@@ -138,7 +138,6 @@ export default function Usuarios() {
                 <Plus className="w-4 h-4" /> Novo Registro
               </Button>
             </DialogTrigger>
-            {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
             <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl">
               <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-blue-600" /> Cadastrar Usuário ou Administrador
@@ -158,8 +157,8 @@ export default function Usuarios() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-1.5">
-                    <Label className="font-bold text-slate-700">Idade</Label>
-                    <Input name="idade" type="number" placeholder="Ex: 22" />
+                    <Label className="font-bold text-slate-700">Ano de Nascimento</Label>
+                    <Input name="dataNascimento" type="number" required placeholder="Ex: 2004" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label className="font-bold text-slate-700">Gênero / Sexo</Label>
@@ -208,7 +207,8 @@ export default function Usuarios() {
                 <TableCell className="font-semibold text-slate-900 px-6 py-4">{u.nome}</TableCell>
                 <TableCell className="text-slate-600 font-medium px-6 py-4">{u.email}</TableCell>
                 <TableCell className="text-slate-500 font-medium px-6 py-4">
-                  {u.idade ? `${u.idade} anos` : "-"} / {u.sexo || "-"}
+                  {/* 🟢 Cálculo dinâmico da Idade baseado no ano atual (2026) */}
+                  {u.dataNascimento ? `${2026 - u.dataNascimento} anos` : "-"} / {u.sexo || "-"}
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${
@@ -250,7 +250,6 @@ export default function Usuarios() {
       </Card>
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
         <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Editar Dados de Registro</DialogTitle>
           {usuarioEditando && (
@@ -258,7 +257,10 @@ export default function Usuarios() {
               <div className="grid gap-1.5"><Label>Nome Completo</Label><Input name="nome" defaultValue={usuarioEditando.nome} required /></div>
               <div className="grid gap-1.5"><Label>E-mail</Label><Input name="email" type="email" defaultValue={usuarioEditando.email} required /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-1.5"><Label>Idade</Label><Input name="idade" type="number" defaultValue={usuarioEditando.idade || ""} /></div>
+                <div className="grid gap-1.5">
+                  <Label>Ano de Nascimento</Label>
+                  <Input name="dataNascimento" type="number" defaultValue={usuarioEditando.dataNascimento || ""} required />
+                </div>
                 <div className="grid gap-1.5"><Label>Gênero</Label><Input name="sexo" defaultValue={usuarioEditando.sexo || ""} /></div>
               </div>
               <div className="grid gap-1.5">

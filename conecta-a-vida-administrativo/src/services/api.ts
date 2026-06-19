@@ -9,7 +9,7 @@ export interface Usuario {
   nome: string;
   email: string;
   senha?: string;
-  idade?: number;
+  dataNascimento?: number; // 🟢 Alterado de idade para dataNascimento
   sexo?: string;
   localizacao?: string; 
   permissao?: string;
@@ -77,8 +77,8 @@ export interface ChartData {
 // ===================================================================
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api', // Endereço IP local da API Spring Boot
-  timeout: 12000, 
+  baseURL: 'https://conecta-vida-api.onrender.com/api', // 🚀 Apontando corretamente para o seu link do Render!
+  timeout: 12000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -241,10 +241,10 @@ export const logService = {
 
 export const relatorioService = {
   getUrlDownloadPdf: (): string => {
-    return 'http://localhost:8080/api/relatorios/usuarios';
+    return 'https://conecta-vida-api.onrender.com/api/relatorios/usuarios'; // 🚀 Atualizado para o Render
   },
   getUrlExportarCsv: (): string => {
-    return 'http://localhost:8080/api/relatorios/usuarios/csv'; // 🟢 CORRIGIDO: Aponta para a nova rota oficial de download de CSV do RelatorioController
+    return 'https://conecta-vida-api.onrender.com/api/relatorios/usuarios/csv'; // 🚀 Atualizado para o Render
   }
 };
 

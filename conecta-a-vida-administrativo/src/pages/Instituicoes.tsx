@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail } from "lucide-react";
+import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail, Globe } from "lucide-react";
 import { instituicaoService, type InstituicaoSaude } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,7 +109,6 @@ export default function Instituicoes() {
               <Plus className="w-4 h-4" /> Nova Unidade
             </Button>
           </DialogTrigger>
-          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
           <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Plus className="w-5 h-5 text-blue-600" /> Cadastrar Ponto de Atendimento Médico
@@ -168,6 +167,7 @@ export default function Instituicoes() {
                 {inst.endereco && <p className="flex items-start gap-1.5 text-slate-500"><MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> {inst.endereco}</p>}
                 <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-400" /> {inst.telefone}</p>
                 {inst.email && <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-400" /> {inst.email}</p>}
+                {inst.linksite && <p className="flex items-center gap-1.5 text-blue-600 truncate"><Globe className="w-3.5 h-3.5" /> <a href={inst.linksite} target="_blank" rel="noreferrer" className="hover:underline">{inst.linksite}</a></p>}
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[11px] space-y-1 font-bold text-slate-500">
                 <div className="flex justify-between"><span>Seg a Sex:</span><span className="text-slate-700">{inst.horarioSegSex || "-"}</span></div>
@@ -180,8 +180,7 @@ export default function Instituicoes() {
       </div>
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-        <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto border-none">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Edit2 className="w-5 h-5 text-amber-500" /> Atualizar Unidade de Saúde</DialogTitle>
           {instituicaoEditando && (
             <form onSubmit={handleEdicao} className="space-y-4 pt-4">
@@ -201,6 +200,13 @@ export default function Instituicoes() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Telefone</Label><Input name="telefone" defaultValue={instituicaoEditando.telefone} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">E-mail</Label><Input name="email" type="email" defaultValue={instituicaoEditando.email || ""} /></div>
               </div>
+              
+              {/* 🟢 ADICIONADO: Campo linksite no formulário de edição */}
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Link do Website Oficial (linksite)</Label>
+                <Input name="linksite" defaultValue={instituicaoEditando.linksite || ""} placeholder="https://saude.com.br" />
+              </div>
+
               <div className="grid gap-3 bg-amber-50/40 p-3 rounded-lg border border-amber-100">
                 <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Seg a Sex</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" defaultValue={instituicaoEditando.horarioSegSex || ""} /></div>
                 <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" defaultValue={instituicaoEditando.horarioSabado || ""} /></div>

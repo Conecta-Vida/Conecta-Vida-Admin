@@ -101,12 +101,11 @@ export default function Campanhas() {
 
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1">
+            <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1 text-white border-none">
               <Plus className="w-4 h-4" /> Nova Campanha
             </Button>
           </DialogTrigger>
-          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl border-none shadow-lg max-h-[90vh] overflow-y-auto">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Megaphone className="w-5 h-5 text-blue-600" /> Cadastrar Mutirão Comunitário
             </DialogTitle>
@@ -123,9 +122,13 @@ export default function Campanhas() {
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                    <option value="Doações">Doação de Sangue / Insumos</option>
                     <option value="Vacinação">Campanha de Vacinação</option>
-                    <option value="Eventos">Eventos / Palestras</option>
+                    <option value="Doação de Sangue">Doação de Sangue</option>
+                    <option value="Saúde da Mulher">Saúde da Mulher</option>
+                    <option value="Saúde do Homem">Saúde do Homem</option>
+                    <option value="Check-up Médico">Check-up Médico</option>
+                    <option value="Saúde Mental">Saúde Mental</option>
+                    <option value="Combate a Surtos">Combate a Surtos</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5">
@@ -151,7 +154,7 @@ export default function Campanhas() {
                 <Label className="font-bold text-slate-700">Link da Imagem de Capa (Opcional)</Label>
                 <Input name="linkimagem" placeholder="https://exemplo.com/foto.jpg" />
               </div>
-              <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4">
+              <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4 border-none hover:bg-blue-700">
                 Publicar Campanha e Sincronizar Mobile
               </Button>
             </form>
@@ -179,11 +182,11 @@ export default function Campanhas() {
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg">
-                    <DropdownMenuItem onClick={() => { setCampanhaEditando(c); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600">
+                  <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg p-1">
+                    <DropdownMenuItem onClick={() => { setCampanhaEditando(c); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600 px-3 py-2 rounded hover:bg-slate-50">
                       <Edit2 className="w-3.5 h-3.5" /> Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => c.id && handleDeletar(c.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600">
+                    <DropdownMenuItem onClick={() => c.id && handleDeletar(c.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600 px-3 py-2 rounded hover:bg-slate-50">
                       <Trash2 className="w-3.5 h-3.5" /> Excluir
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -216,8 +219,7 @@ export default function Campanhas() {
       </div>
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
-        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl border-none shadow-lg max-h-[90vh] overflow-y-auto">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros da Campanha</DialogTitle>
           {campanhaEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
@@ -227,9 +229,13 @@ export default function Campanhas() {
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" defaultValue={campanhaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
-                    <option value="Doações">Doação de Sangue / Insumos</option>
                     <option value="Vacinação">Campanha de Vacinação</option>
-                    <option value="Eventos">Eventos / Palestras</option>
+                    <option value="Doação de Sangue">Doação de Sangue</option>
+                    <option value="Saúde da Mulher">Saúde da Mulher</option>
+                    <option value="Saúde do Homem">Saúde do Homem</option>
+                    <option value="Check-up Médico">Check-up Médico</option>
+                    <option value="Saúde Mental">Saúde Mental</option>
+                    <option value="Combate a Surtos">Combate a Surtos</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Público-Alvo</Label><Input name="publicoAlvo" defaultValue={campanhaEditando.publicoAlvo} required /></div>
@@ -248,7 +254,7 @@ export default function Campanhas() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" defaultValue={campanhaEditando.dataInicio ? campanhaEditando.dataInicio.substring(0, 16) : ""} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Fim</Label><Input name="dataFim" type="datetime-local" defaultValue={campanhaEditando.dataFim ? campanhaEditando.dataFim.substring(0, 16) : ""} required /></div>
               </div>
-              <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4">
+              <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4 border-none hover:bg-amber-600">
                 Salvar Alterações
               </Button>
             </form>
