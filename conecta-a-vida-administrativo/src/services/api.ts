@@ -77,7 +77,8 @@ export interface ChartData {
 // ===================================================================
 
 const api = axios.create({
-  baseURL: 'https://conecta-vida-api.onrender.com/api', // 🚀 Apontando corretamente para o seu link do Render!
+  // 💻 Apontando 100% para a sua API Java Local
+  baseURL: 'http://localhost:8080/api', 
   timeout: 12000,
   headers: {
     'Content-Type': 'application/json',
@@ -171,7 +172,6 @@ export const instituicaoService = {
     return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    // 🟢 CORRIGIDO: Removido prefixo duplicado /api/ e apontado para a rota certa do back-end
     await api.delete(`/instituicoes/${id}`);
   }
 };
@@ -194,7 +194,6 @@ export const campanhaService = {
     return response.data;
   },
   deletar: async (id: number): Promise<void> => {
-    // 🟢 CORRIGIDO: Campanhas são deletadas via fluxo unificado de comunicações no Java
     await api.delete(`/comunicacoes/${id}`);
   }
 };
@@ -216,7 +215,6 @@ export const alertaService = {
     await api.put(`/alertas/${id}`, { lido: true });
   },
   deletar: async (id: number): Promise<void> => {
-    // 🟢 CORRIGIDO: Alertas também são removidos de forma polimórfica pela rota unificada
     await api.delete(`/comunicacoes/${id}`);
   }
 };
@@ -241,10 +239,12 @@ export const logService = {
 
 export const relatorioService = {
   getUrlDownloadPdf: (): string => {
-    return 'https://conecta-vida-api.onrender.com/api/relatorios/usuarios'; // 🚀 Atualizado para o Render
+    // 💻 Atualizado para a API Localhost
+    return 'http://localhost:8080/api/relatorios/usuarios'; 
   },
   getUrlExportarCsv: (): string => {
-    return 'https://conecta-vida-api.onrender.com/api/relatorios/usuarios/csv'; // 🚀 Atualizado para o Render
+    // 💻 Atualizado para a API Localhost
+    return 'http://localhost:8080/api/relatorios/usuarios/csv'; 
   }
 };
 
