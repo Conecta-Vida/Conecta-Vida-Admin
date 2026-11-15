@@ -179,8 +179,8 @@ export default function Instituicoes() {
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[11px] space-y-1 font-bold text-slate-500">
                 <div className="flex justify-between"><span>Seg a Sex:</span><span className="text-slate-700">{inst.horarioSegSex || "-"}</span></div>
-                <div className="flex justify-between"><span>Sábado:</span><span className="text-slate-700">{inst.horarioSabado || "Fechado"}</span></div>
-                <div className="flex justify-between"><span>Domingo:</span><span className="text-slate-700">{inst.horarioDomingo || "Fechado"}</span></div>
+                <div className="flex justify-between"><span>Sábado:</span><span className="text-slate-700">{inst.horarioSabado || "Não informado"}</span></div>
+                <div className="flex justify-between"><span>Domingo:</span><span className="text-slate-700">{inst.horarioDomingo || "Não informado"}</span></div>
               </div>
             </CardContent>
           </Card>
