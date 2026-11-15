@@ -24,8 +24,7 @@ begin
 end;
 $$;
 
-drop trigger if exists conecta_padronizar_comunicacao on public.comunicacoes;
-create trigger conecta_padronizar_comunicacao
+create or replace trigger conecta_padronizar_comunicacao
   before insert or update on public.comunicacoes
   for each row execute function app.padronizar_comunicacao();
 
@@ -39,21 +38,25 @@ on conflict (id) do update
       file_size_limit = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
 
-drop policy if exists cv_imagens_admin_insert on storage.objects;
-create policy cv_imagens_admin_insert on storage.objects
-  for insert to authenticated
-  with check (bucket_id = 'comunicacoes' and (select app.is_admin()));
-
-drop policy if exists cv_imagens_admin_update on storage.objects;
-create policy cv_imagens_admin_update on storage.objects
-  for update to authenticated
-  using (bucket_id = 'comunicacoes' and (select app.is_admin()))
-  with check (bucket_id = 'comunicacoes' and (select app.is_admin()));
-
-drop policy if exists cv_imagens_admin_delete on storage.objects;
-create policy cv_imagens_admin_delete on storage.objects
-  for delete to authenticated
-  using (bucket_id = 'comunicacoes' and (select app.is_admin()));
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'cv_imagens_admin_insert') then
+    create policy cv_imagens_admin_insert on storage.objects
+      for insert to authenticated
+      with check (bucket_id = 'comunicacoes' and (select app.is_admin()));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'cv_imagens_admin_update') then
+    create policy cv_imagens_admin_update on storage.objects
+      for update to authenticated
+      using (bucket_id = 'comunicacoes' and (select app.is_admin()))
+      with check (bucket_id = 'comunicacoes' and (select app.is_admin()));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'cv_imagens_admin_delete') then
+    create policy cv_imagens_admin_delete on storage.objects
+      for delete to authenticated
+      using (bucket_id = 'comunicacoes' and (select app.is_admin()));
+  end if;
+end $$;
 
 -- 3. Encerramento automático de campanhas vencidas --------------------------
 create or replace function app.encerrar_campanhas_vencidas()
@@ -81,3 +84,10 @@ begin
   perform cron.schedule('conecta-encerrar-campanhas', '5 6 * * *',
                         'select app.encerrar_campanhas_vencidas()');
 end $$;
+
+-- 4. Correção única dos registros antigos (o gatilho acima padroniza o resto)
+update public.comunicacoes
+   set localizacao = case when lower(btrim(localizacao)) = 'braganca paulista' then 'Bragança Paulista' else localizacao end,
+       categoria = case when btrim(categoria) = 'Urgencia' then 'Urgência' else categoria end
+ where id is not null;
+select app.encerrar_campanhas_vencidas();
