@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import ImagemUpload from "../components/ImagemUpload";
+import BotaoImportar from "../components/BotaoImportar";
 import { noticiaService, type Alerta } from "../services/api";
 
 export default function Noticias() {
@@ -104,6 +105,8 @@ export default function Noticias() {
           <Newspaper className="w-8 h-8 text-blue-500" /> Gestão de Notícias
         </h1>
 
+        <div className="flex flex-wrap items-center gap-2">
+        <BotaoImportar alvo="noticias" rotulo="Importar do Ministério da Saúde" aoConcluir={carregarAlertas} />
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
             <Button className="bg-blue-500 font-bold hover:bg-blue-600 shadow-sm gap-1 text-white">
@@ -146,6 +149,7 @@ export default function Noticias() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

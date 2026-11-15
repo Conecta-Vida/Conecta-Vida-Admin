@@ -28,6 +28,7 @@ Não há mais API Java nem servidor próprio: o app e o painel falam direto com 
 |---|---|
 | `conecta-a-vida-administrativo/` | Painel (React 19 + Vite + TypeScript + Tailwind). Todo o acesso a dados está em `src/services/api.ts`. |
 | `supabase/migrations/` | SQL do vínculo com o Supabase Auth, regras de acesso e funções administrativas. É aditivo e pode ser executado mais de uma vez. |
+| `supabase/functions/importar-dados/` | Edge Function que importa notícias e unidades de saúde de fontes oficiais. |
 | `supabase/functions/admin-usuarios/` | Edge Function que cria contas pelo painel (usa a chave de serviço, que nunca vai para o navegador). |
 | `netlify.toml` | Configuração de build e rotas para o Netlify. |
 
@@ -67,6 +68,7 @@ As senhas antigas não podem ser migradas. Quem já tinha conta se cadastra de n
 - **Unidades de Saúde**, **Campanhas**, **Alertas** e **Notícias**: cadastro completo.
 - **Imagens de capa**: enviadas pelo próprio painel para o Supabase Storage.
 - **Inscritos por campanha**: total em cada card e lista de participantes (titular ou dependente) nos detalhes.
+- **Dados reais automáticos**: a função `importar-dados` publica as notícias do Ministério da Saúde (duas vezes por dia) e atualiza as unidades de saúde de Bragança Paulista pelo CNES (todo mês). Os botões **Importar do Ministério da Saúde** e **Importar do CNES** fazem o mesmo na hora.
 - **Encerramento automático**: todo dia o banco marca como encerradas as campanhas com data de término vencida.
 - **Login** restrito a administradores e **recuperação de senha** por e-mail.
 

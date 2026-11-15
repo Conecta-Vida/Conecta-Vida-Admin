@@ -510,6 +510,34 @@ export const imagemService = {
 };
 export const noticiaService = servicoDeAvisos('NOTICIA', 'as notícias');
 
+// ---------- Importação de dados oficiais ----------
+export const importacaoService = {
+  /**
+   * Busca dados reais agora (a mesma função roda sozinha todo dia):
+   * "noticias" = Ministério da Saúde; "unidades" = CNES, Bragança Paulista.
+   * Devolve um resumo para mostrar ao administrador.
+   */
+  importar: async (alvo: 'noticias' | 'unidades'): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke('importar-dados', { body: { alvo } });
+    if (error) {
+      let mensagem = error.message;
+      try {
+        const corpo = await (error as { context?: Response }).context?.json();
+        if (corpo?.mensagem) mensagem = corpo.mensagem;
+      } catch { /* mantém a mensagem padrão */ }
+      throw new Error(mensagem);
+    }
+    if (alvo === 'noticias') {
+      const r = data.noticias;
+      return r.novas > 0
+        ? `${r.novas} notícia(s) nova(s) do Ministério da Saúde publicada(s).`
+        : 'Nenhuma notícia nova: o aplicativo já está em dia com o Ministério da Saúde.';
+    }
+    const r = data.unidades;
+    return `Unidades do CNES: ${r.novas} nova(s) e ${r.atualizadas} atualizada(s).`;
+  },
+};
+
 // ---------- Dashboard ----------
 const contar = async (
   tabela: string,
