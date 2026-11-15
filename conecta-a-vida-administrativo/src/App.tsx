@@ -14,6 +14,7 @@ const Alertas = lazy(() => import("./pages/Alertas"));
 const Noticias = lazy(() => import("./pages/Noticias"));
 const Login = lazy(() => import("./pages/Login"));
 const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
+const EmailConfirmado = lazy(() => import("./pages/EmailConfirmado"));
 const Instituicoes = lazy(() => import("./pages/Instituicoes"));
 
 // Componente visual de carregamento
@@ -51,6 +52,8 @@ function App() {
         <Route path="/login" element={<Suspense fallback={<TelaCarregamento />}><Login /></Suspense>} />
         {/* Aberta pelo link do e-mail de recuperação (app e painel) */}
         <Route path="/redefinir-senha" element={<Suspense fallback={<TelaCarregamento />}><RedefinirSenha /></Suspense>} />
+        {/* Aberta pelo link do e-mail de confirmação de cadastro do app */}
+        <Route path="/email-confirmado" element={<Suspense fallback={<TelaCarregamento />}><EmailConfirmado /></Suspense>} />
 
         {/* ROTAS PRIVADAS */}
         <Route element={<RotaProtegida />}>
