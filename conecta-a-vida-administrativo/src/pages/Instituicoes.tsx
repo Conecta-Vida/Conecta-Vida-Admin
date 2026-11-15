@@ -19,8 +19,8 @@ export default function Instituicoes() {
     try {
       const dados = await instituicaoService.listarTodas();
       setInstituicoes(dados);
-    } catch {
-      toast.error("Erro ao sincronizar mapa de unidades de saúde.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao sincronizar mapa de unidades de saúde.");
     }
   };
 
@@ -49,8 +49,8 @@ export default function Instituicoes() {
       toast.success("Unidade de saúde integrada com sucesso!");
       setOpenCadastro(false);
       carregarInstituicoes();
-    } catch {
-      toast.error("Falha ao registar a nova instituição.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao registar a nova instituição.");
     }
   };
 
@@ -77,8 +77,8 @@ export default function Instituicoes() {
       setOpenEdicao(false);
       setInstituicaoEditando(null);
       carregarInstituicoes();
-    } catch {
-      toast.error("Erro ao aplicar as alterações cadastrais.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao aplicar as alterações cadastrais.");
     }
   };
 
@@ -88,8 +88,8 @@ export default function Instituicoes() {
       await instituicaoService.deletar(id);
       toast.success("Unidade de saúde removida do ecossistema.");
       carregarInstituicoes();
-    } catch {
-      toast.error("Não foi possível excluir a instituição selecionada.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível excluir a instituição selecionada.");
     }
   };
 

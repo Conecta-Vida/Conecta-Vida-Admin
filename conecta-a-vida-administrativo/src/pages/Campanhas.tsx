@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Megaphone, Calendar, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
+import ImagemUpload from "../components/ImagemUpload";
 import { campanhaService, type Campanha } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,19 +9,25 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 export default function Campanhas() {
   const [campanhas, setCampanhas] = useState<Campanha[]>([]);
+  const [inscritos, setInscritos] = useState<Record<number, number>>({});
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [campanhaEditando, setCampanhaEditando] = useState<Campanha | null>(null);
 
   const carregarCampanhas = async () => {
     try {
-      const dados = await campanhaService.listarTodas();
+      const [dados, totais] = await Promise.all([
+        campanhaService.listarTodas(),
+        campanhaService.contarInscritosPorCampanha().catch(() => ({})),
+      ]);
+      setInscritos(totais);
       setCampanhas(dados);
-    } catch {
-      toast.error("Erro ao sincronizar campanhas com a base Java.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao sincronizar campanhas com a base Java.");
     }
   };
 
@@ -41,7 +48,7 @@ export default function Campanhas() {
       status: f.get("status") as string, 
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
-      linkimagem: (f.get("linkimagem") as string) || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800"
+      linkimagem: (f.get("linkimagem") as string) || ""
     };
 
     try {
@@ -49,8 +56,8 @@ export default function Campanhas() {
       toast.success("Campanha comunitária lançada com sucesso!");
       setOpenCadastro(false);
       carregarCampanhas();
-    } catch {
-      toast.error("Erro ao salvar a campanha no Supabase.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao salvar a campanha no Supabase.");
     }
   };
 
@@ -68,7 +75,7 @@ export default function Campanhas() {
       status: f.get("status") as string,
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
-      linkimagem: campanhaEditando.linkimagem
+      linkimagem: (f.get("linkimagem") as string) ?? campanhaEditando.linkimagem
     };
 
     try {
@@ -76,8 +83,8 @@ export default function Campanhas() {
       toast.success("Campanha atualizada com sucesso!");
       setOpenEdicao(false);
       carregarCampanhas();
-    } catch {
-      toast.error("Falha ao modificar os dados da campanha.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao modificar os dados da campanha.");
     }
   };
 
@@ -87,8 +94,8 @@ export default function Campanhas() {
       await campanhaService.deletar(id);
       toast.success("Campanha removida da base.");
       carregarCampanhas();
-    } catch {
-      toast.error("Erro ao deletar o registro polimórfico.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao deletar o registro polimórfico.");
     }
   };
 
@@ -142,7 +149,7 @@ export default function Campanhas() {
                   <Label className="font-bold text-slate-700">Estado Inicial</Label>
                   <select name="status" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
                     <option value="ATIVA">ATIVA (Visível no Mobile)</option>
-                    <option value="CONCLUÍDA">CONCLUÍDA (Histórico)</option>
+                    <option value="ENCERRADA">ENCERRADA (Histórico)</option>
                   </select>
                 </div>
               </div>
@@ -150,10 +157,7 @@ export default function Campanhas() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Previsão de Término</Label><Input name="dataFim" type="datetime-local" required /></div>
               </div>
-              <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Link da Imagem de Capa (Opcional)</Label>
-                <Input name="linkimagem" placeholder="https://exemplo.com/foto.jpg" />
-              </div>
+              <ImagemUpload />
               <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4 border-none hover:bg-blue-700">
                 Publicar Campanha e Sincronizar Mobile
               </Button>
@@ -199,8 +203,14 @@ export default function Campanhas() {
                 <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                   <Layers className="w-3.5 h-3.5" /> {c.categoria || "Geral"}
                 </span>
+                <Link
+                  to={`/campanhas/${c.id}`}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                >
+                  <Users className="w-3.5 h-3.5" /> {inscritos[c.id ?? 0] ?? 0} inscrito(s)
+                </Link>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                  c.status === "ATIVA" || c.status === "Ativa"
+                  c.status?.toUpperCase() === "ATIVA"
                     ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
                     : "bg-slate-100 text-slate-500 border border-slate-200"
                 }`}>
@@ -246,7 +256,7 @@ export default function Campanhas() {
                   <Label className="font-bold text-slate-700">Estado da Campanha</Label>
                   <select name="status" defaultValue={campanhaEditando.status} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
                     <option value="ATIVA">ATIVA (Visível no Mobile)</option>
-                    <option value="CONCLUÍDA">CONCLUÍDA (Histórico)</option>
+                    <option value="ENCERRADA">ENCERRADA (Histórico)</option>
                   </select>
                 </div>
               </div>
@@ -254,6 +264,7 @@ export default function Campanhas() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" defaultValue={campanhaEditando.dataInicio ? campanhaEditando.dataInicio.substring(0, 16) : ""} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Fim</Label><Input name="dataFim" type="datetime-local" defaultValue={campanhaEditando.dataFim ? campanhaEditando.dataFim.substring(0, 16) : ""} required /></div>
               </div>
+              <ImagemUpload defaultValue={campanhaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4 border-none hover:bg-amber-600">
                 Salvar Alterações
               </Button>

@@ -103,8 +103,8 @@ export default function Index() {
       <div className="grid gap-6 md:grid-cols-7">
         <Card className="md:col-span-4 border-none shadow-sm bg-white">
           <CardHeader>
-            <CardTitle className="text-base font-bold text-slate-800">Crescimento da Plataforma</CardTitle>
-            <p className="text-xs text-slate-400">Volume histórico de adesão de usuários</p>
+            <CardTitle className="text-base font-bold text-slate-800">Publicações por mês</CardTitle>
+            <p className="text-xs text-slate-400">Notícias, campanhas e alertas publicados nos últimos 6 meses</p>
           </CardHeader>
           <CardContent className="h-[240px] flex items-end justify-between gap-2 pt-4 px-4">
             {grafico.map((item, index) => {

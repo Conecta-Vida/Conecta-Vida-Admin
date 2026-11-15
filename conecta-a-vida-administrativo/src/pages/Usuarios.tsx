@@ -21,8 +21,8 @@ export default function Usuarios() {
     try {
       const dados = await usuarioService.listarTodos();
       setUsuarios(dados);
-    } catch {
-      toast.error("Erro ao carregar a lista de cidadãos.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao carregar a lista de cidadãos.");
     }
   };
 
@@ -58,8 +58,8 @@ export default function Usuarios() {
       toast.success("Registro criado com sucesso!");
       setOpenCadastro(false);
       carregarUsuarios();
-    } catch {
-      toast.error("Falha ao salvar o novo registro.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao salvar o novo registro.");
     }
   };
 
@@ -82,8 +82,8 @@ export default function Usuarios() {
       toast.success("Dados atualizados com sucesso!");
       setOpenEdicao(false);
       carregarUsuarios();
-    } catch {
-      toast.error("Erro na atualização dos dados.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro na atualização dos dados.");
     }
   };
 
@@ -93,8 +93,8 @@ export default function Usuarios() {
       await usuarioService.deletar(id);
       toast.success("Registro removido.");
       carregarUsuarios();
-    } catch {
-      toast.error("Não foi possível deletar o usuário.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível deletar o usuário.");
     }
   };
 
@@ -119,11 +119,11 @@ export default function Usuarios() {
         </h1>
         
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => window.open(relatorioService.getUrlDownloadPdf(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
+          <Button variant="outline" onClick={() => relatorioService.imprimirUsuarios().catch((e) => toast.error(e.message))} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <FileText className="w-4 h-4 text-red-500" /> Exportar PDF
           </Button>
           
-          <Button variant="outline" onClick={() => window.open(relatorioService.getUrlExportarCsv(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
+          <Button variant="outline" onClick={() => relatorioService.exportarUsuariosCsv().catch((e) => toast.error(e.message))} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <Download className="w-4 h-4 text-emerald-600" /> Exportar CSV
           </Button>
 

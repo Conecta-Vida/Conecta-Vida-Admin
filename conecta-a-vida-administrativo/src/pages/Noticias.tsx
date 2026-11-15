@@ -1,0 +1,247 @@
+import { useEffect, useState } from "react";
+import { Newspaper, Radio, CheckCircle2, MapPin, BellRing, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import ImagemUpload from "../components/ImagemUpload";
+import { noticiaService, type Alerta } from "../services/api";
+
+export default function Noticias() {
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [openCadastro, setOpenCadastro] = useState(false);
+  const [openEdicao, setOpenEdicao] = useState(false);
+  const [alertaEditando, setAlertaEditando] = useState<Alerta | null>(null);
+
+  const carregarAlertas = async () => {
+    try {
+      const dados = await noticiaService.listarTodos();
+      setAlertas(dados);
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao carregar as notícias.");
+    }
+  };
+
+  useEffect(() => {
+    carregarAlertas();
+  }, []);
+
+  const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+
+    const novoAlerta: Alerta = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string,
+      localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) || "",
+      lido: false
+    };
+
+    try {
+      await noticiaService.cadastrar(novoAlerta);
+      toast.success("Notícia publicada no aplicativo!");
+      setOpenCadastro(false);
+      carregarAlertas();
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao publicar a notícia.");
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!alertaEditando?.id) return;
+    const f = new FormData(e.currentTarget);
+
+    const dados: Alerta = {
+      titulo: f.get("titulo") as string,
+      descricao: f.get("descricao") as string,
+      categoria: f.get("categoria") as string,
+      localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
+      lido: alertaEditando.lido
+    };
+
+    try {
+      await noticiaService.atualizar(alertaEditando.id, dados);
+      toast.success("Notícia atualizada.");
+      setOpenEdicao(false);
+      carregarAlertas();
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao atualizar o registro no banco de dados.");
+    }
+  };
+
+  const handleMarcarComoLido = async (id: number) => {
+    try {
+      await noticiaService.marcarComoLido(id);
+      toast.success("Notícia arquivada.");
+      carregarAlertas();
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao atualizar a notícia.");
+    }
+  };
+
+  const handleDeletar = async (id: number) => {
+    if (!confirm("Remover esta notícia definitivamente do aplicativo?")) return;
+    try {
+      await noticiaService.deletar(id);
+      toast.success("Registro removido com sucesso.");
+      carregarAlertas();
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao deletar a publicação polimórfica.");
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-10">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-black flex items-center gap-2 text-slate-900">
+          <Newspaper className="w-8 h-8 text-blue-500" /> Gestão de Notícias
+        </h1>
+
+        <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-500 font-bold hover:bg-blue-600 shadow-sm gap-1 text-white">
+              <Radio className="w-4 h-4 animate-pulse" /> Publicar Notícia
+            </Button>
+          </DialogTrigger>
+          {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+            <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
+              <Radio className="w-5 h-5 text-blue-500" /> Lançar Transmissão de Emergência
+            </DialogTitle>
+            <form onSubmit={handleCadastro} className="space-y-4 pt-4">
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Título da Notícia</Label>
+                <Input name="titulo" required placeholder="Ex: Nova UBS inaugurada no centro" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Instruções de Contingência para a População</Label>
+                <textarea name="descricao" required rows={3} placeholder="Escreva o texto da notícia que os cidadãos verão no smartphone..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Grau de Risco (Gatilho Push)</Label>
+                  <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
+                    <option value="Informativo">Informativo</option>
+                    <option value="Vacinação">Vacinação</option>
+                    <option value="Prevenção">Prevenção</option>
+                    <option value="Serviços de Saúde">Serviços de Saúde</option>
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Foco Geográfico (Cidade/Bairro)</Label>
+                  <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
+                </div>
+              </div>
+              <ImagemUpload />
+              <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
+                Publicar Notícia no Aplicativo
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {alertas.map((a) => (
+          <Card key={a.id} className="border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between rounded-xl">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="font-black text-lg text-slate-900 leading-snug flex items-center gap-1.5">
+                    <BellRing className="w-4 h-4 text-blue-500 shrink-0" /> {a.titulo}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Foco: {a.localizacao || "Geral"}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Nível: {a.categoria}</span>
+                  </div>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 rounded-md">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36 border bg-white shadow-md rounded-lg">
+                    <DropdownMenuItem onClick={() => a.id && handleMarcarComoLido(a.id)} className="gap-2 cursor-pointer font-bold text-xs text-emerald-600">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Arquivar (Lido)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setAlertaEditando(a); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-blue-600">
+                      <Edit2 className="w-3.5 h-3.5" /> Modificar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => a.id && handleDeletar(a.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600">
+                      <Trash2 className="w-3.5 h-3.5" /> Remover
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <p className="text-sm text-slate-600 font-medium leading-relaxed">{a.descricao}</p>
+
+              <div className="flex items-center justify-between border-t pt-4 mt-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Postado em: {a.dataPostada ? new Date(a.dataPostada).toLocaleString() : "Recentemente"}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 animate-pulse">
+                  Ativo no Celular
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {alertas.length === 0 && (
+          <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
+            Nenhuma notícia publicada.
+          </div>
+        )}
+      </div>
+
+      <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
+        {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Editar Notícia</DialogTitle>
+          {alertaEditando && (
+            <form onSubmit={handleUpdate} className="space-y-4 pt-4">
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Título da Notícia</Label>
+                <Input name="titulo" defaultValue={alertaEditando.titulo} required />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="font-bold text-slate-700">Instruções de Contingência</Label>
+                <textarea name="descricao" defaultValue={alertaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Grau de Risco</Label>
+                  <select name="categoria" defaultValue={alertaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
+                    <option value="Informativo">Informativo</option>
+                    <option value="Vacinação">Vacinação</option>
+                    <option value="Prevenção">Prevenção</option>
+                    <option value="Serviços de Saúde">Serviços de Saúde</option>
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="font-bold text-slate-700">Foco Geográfico</Label>
+                  <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
+                </div>
+              </div>
+                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
+              <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
+                Salvar Alterações Técnico-Operacionais
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
