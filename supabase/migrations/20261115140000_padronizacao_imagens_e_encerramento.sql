@@ -91,3 +91,13 @@ update public.comunicacoes
        categoria = case when btrim(categoria) = 'Urgencia' then 'Urgência' else categoria end
  where id is not null;
 select app.encerrar_campanhas_vencidas();
+
+-- 5. Administradores também listam as imagens (necessário para trocar/remover)
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'cv_imagens_admin_select') then
+    create policy cv_imagens_admin_select on storage.objects
+      for select to authenticated
+      using (bucket_id = 'comunicacoes' and (select app.is_admin()));
+  end if;
+end $$;

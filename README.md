@@ -65,6 +65,9 @@ As senhas antigas não podem ser migradas. Quem já tinha conta se cadastra de n
 - **Dashboard**: indicadores, publicações por mês e atividade recente.
 - **Usuários**: listar, criar, editar, promover a administrador, remover, importar CSV, exportar CSV e relatório para impressão/PDF.
 - **Unidades de Saúde**, **Campanhas**, **Alertas** e **Notícias**: cadastro completo.
+- **Imagens de capa**: enviadas pelo próprio painel para o Supabase Storage.
+- **Inscritos por campanha**: total em cada card e lista de participantes (titular ou dependente) nos detalhes.
+- **Encerramento automático**: todo dia o banco marca como encerradas as campanhas com data de término vencida.
 - **Login** restrito a administradores e **recuperação de senha** por e-mail.
 
 © 2026 Conecta Vida. Projeto acadêmico do IFSP Bragança Paulista.
