@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import ImagemUpload from "../components/ImagemUpload";
 import { noticiaService, type Alerta } from "../services/api";
 
 export default function Noticias() {
@@ -37,6 +38,7 @@ export default function Noticias() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) || "",
       lido: false
     };
 
@@ -60,6 +62,7 @@ export default function Noticias() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
       lido: alertaEditando.lido
     };
 
@@ -136,6 +139,7 @@ export default function Noticias() {
                   <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
                 </div>
               </div>
+              <ImagemUpload />
               <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
                 Publicar Notícia no Aplicativo
               </Button>
@@ -230,6 +234,7 @@ export default function Noticias() {
                   <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
                 </div>
               </div>
+                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
                 Salvar Alterações Técnico-Operacionais
               </Button>

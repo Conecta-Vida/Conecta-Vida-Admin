@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import ImagemUpload from "../components/ImagemUpload";
 import { alertaService, type Alerta } from "../services/api";
 
 export default function Alertas() {
@@ -37,6 +38,7 @@ export default function Alertas() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) || "",
       lido: false
     };
 
@@ -60,6 +62,7 @@ export default function Alertas() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
       lido: alertaEditando.lido
     };
 
@@ -135,6 +138,7 @@ export default function Alertas() {
                   <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
                 </div>
               </div>
+              <ImagemUpload />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Disparar Alerta para o Banco e Mobile
               </Button>
@@ -228,6 +232,7 @@ export default function Alertas() {
                   <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
                 </div>
               </div>
+                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Salvar Alterações Técnico-Operacionais
               </Button>

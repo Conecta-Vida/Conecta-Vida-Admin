@@ -62,6 +62,18 @@ export interface Campanha {
   status: string;
 }
 
+export interface InscritoCampanha {
+  id: number;
+  /** Quem vai participar (o titular ou o dependente). */
+  participante: string;
+  /** "Titular" ou o parentesco do dependente. */
+  vinculo: string;
+  /** Dono da conta que fez a inscrição. */
+  responsavel: string;
+  emailResponsavel: string;
+  dataInscricao: string;
+}
+
 export interface DashboardStats {
   totalUsuarios: number;
   alertasAtivos: number;
@@ -369,6 +381,31 @@ export const campanhaService = {
     if (error) falhar(error, 'Campanha não encontrada');
     return paraCampanha(data as LinhaComunicacao);
   },
+  /** Pessoas inscritas na campanha: o titular da conta ou um dependente dele. */
+  listarInscritos: async (id: number): Promise<InscritoCampanha[]> => {
+    const { data, error } = await supabase.from('usuarios_campanhas')
+      .select('id, data_inscricao, usuario:usuarios(nome, email), dependente:dependentes(nome_completo, parentesco)')
+      .eq('comunicacao_id', id).order('data_inscricao', { ascending: false });
+    if (error) falhar(error, 'Não foi possível listar os inscritos');
+    return (data as any[]).map((l) => ({
+      id: l.id,
+      participante: l.dependente?.nome_completo ?? l.usuario?.nome ?? 'Usuário removido',
+      vinculo: l.dependente ? (l.dependente.parentesco || 'Dependente') : 'Titular',
+      responsavel: l.usuario?.nome ?? '',
+      emailResponsavel: l.usuario?.email ?? '',
+      dataInscricao: l.data_inscricao ?? '',
+    }));
+  },
+  /** Total de inscritos de cada campanha, em uma única consulta. */
+  contarInscritosPorCampanha: async (): Promise<Record<number, number>> => {
+    const { data, error } = await supabase.from('usuarios_campanhas').select('comunicacao_id');
+    if (error) falhar(error, 'Não foi possível contar os inscritos');
+    const totais: Record<number, number> = {};
+    for (const linha of data as { comunicacao_id: number }[]) {
+      totais[linha.comunicacao_id] = (totais[linha.comunicacao_id] ?? 0) + 1;
+    }
+    return totais;
+  },
   /** Quantas pessoas (titulares e dependentes) estão inscritas na campanha. */
   contarInscritos: async (id: number): Promise<number> => {
     const { count, error } = await supabase.from('usuarios_campanhas')
@@ -388,7 +425,7 @@ export const campanhaService = {
     if (error) falhar(error, 'Não foi possível atualizar a campanha');
     return paraCampanha(data as LinhaComunicacao);
   },
-  encerrar: async (id: number): Promise<Campanha> => campanhaService.atualizar(id, { status: 'Encerrada' }),
+  encerrar: async (id: number): Promise<Campanha> => campanhaService.atualizar(id, { status: 'ENCERRADA' }),
   deletar: async (id: number): Promise<void> => {
     const { error } = await supabase.from('comunicacoes').delete().eq('id', id);
     if (error) falhar(error, 'Não foi possível remover a campanha');
@@ -428,7 +465,7 @@ function servicoDeAvisos(tipo: 'ALERTA' | 'NOTICIA', nome: string) {
     },
     cadastrar: async (dados: Alerta): Promise<Alerta> => {
       const { data, error } = await supabase.from('comunicacoes')
-        .insert({ ...alertaParaBanco(dados), tipo, status: 'Ativo', lido: false }).select().single();
+        .insert({ ...alertaParaBanco(dados), tipo, status: 'ATIVO', lido: false }).select().single();
       if (error) falhar(error, 'Não foi possível publicar');
       return paraAlerta(data as LinhaComunicacao);
     },
@@ -450,6 +487,27 @@ function servicoDeAvisos(tipo: 'ALERTA' | 'NOTICIA', nome: string) {
 }
 
 export const alertaService = servicoDeAvisos('ALERTA', 'os alertas');
+
+// ---------- Imagens (Supabase Storage) ----------
+const BUCKET_IMAGENS = 'comunicacoes';
+const TIPOS_DE_IMAGEM: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+};
+
+export const imagemService = {
+  /** Envia a imagem de capa e devolve o endereço público para gravar em `linkimagem`. */
+  enviar: async (arquivo: File): Promise<string> => {
+    const extensao = TIPOS_DE_IMAGEM[arquivo.type];
+    if (!extensao) throw new Error('Envie uma imagem PNG, JPG, WebP ou GIF.');
+    if (arquivo.size > 5 * 1024 * 1024) throw new Error('A imagem precisa ter no máximo 5 MB.');
+
+    const caminho = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extensao}`;
+    const { error } = await supabase.storage.from(BUCKET_IMAGENS)
+      .upload(caminho, arquivo, { contentType: arquivo.type, cacheControl: '31536000' });
+    if (error) falhar(error, 'Não foi possível enviar a imagem');
+    return supabase.storage.from(BUCKET_IMAGENS).getPublicUrl(caminho).data.publicUrl;
+  },
+};
 export const noticiaService = servicoDeAvisos('NOTICIA', 'as notícias');
 
 // ---------- Dashboard ----------
