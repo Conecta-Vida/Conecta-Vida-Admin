@@ -23,7 +23,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // Consome o serviço de autenticação integrado à API Spring Boot
+      // Autentica no Supabase Auth e confere a permissão de administrador
       const usuarioLogado = await authService.login(email, senha);
       
       // Armazena a sessão do administrador em formato string no LocalStorage da máquina
@@ -32,11 +32,22 @@ export default function Login() {
       toast.success(`Bem-vindo de volta, ${usuarioLogado.nome}!`);
       navigate("/"); // Redireciona imediatamente para a home (Dashboard)
     } catch (error: any) {
-      // 🟢 AJUSTE DE OURO: Captura a mensagem customizada em formato JSON enviada pelo AuthController do Spring Boot
-      const mensagemServidor = error.response?.data?.mensagem;
-      toast.error(mensagemServidor || error.message || "Erro ao tentar realizar o login.");
+      toast.error(error.message || "Erro ao tentar realizar o login.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEsqueciSenha = async () => {
+    if (!email) {
+      toast.warning("Digite seu e-mail acima para receber o link de recuperação.");
+      return;
+    }
+    try {
+      await authService.solicitarRecuperacao(email);
+      toast.success("Se o e-mail estiver cadastrado, enviamos um link para criar uma nova senha.");
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível enviar o e-mail de recuperação.");
     }
   };
 
@@ -93,6 +104,14 @@ export default function Login() {
               "Entrar no Sistema"
             )}
           </Button>
+
+          <button
+            type="button"
+            onClick={handleEsqueciSenha}
+            className="w-full text-center text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Esqueci minha senha
+          </button>
         </form>
       </div>
     </div>

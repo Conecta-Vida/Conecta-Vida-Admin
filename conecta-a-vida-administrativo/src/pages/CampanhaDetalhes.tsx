@@ -37,8 +37,8 @@ export default function CampanhaDetalhes() {
       await campanhaService.atualizar(Number(id), atualizada);
       toast.success("Alterações salvas!");
       navigate("/campanhas");
-    } catch {
-      toast.error("Erro ao salvar.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao salvar.");
     }
   };
 
@@ -48,8 +48,8 @@ export default function CampanhaDetalhes() {
       await campanhaService.deletar(Number(id));
       toast.success("Campanha apagada do Supabase.");
       navigate("/campanhas");
-    } catch {
-      toast.error("Erro ao deletar.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao deletar.");
     }
   };
 

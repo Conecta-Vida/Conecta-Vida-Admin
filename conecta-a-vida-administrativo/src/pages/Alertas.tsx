@@ -19,8 +19,8 @@ export default function Alertas() {
     try {
       const dados = await alertaService.listarTodos();
       setAlertas(dados);
-    } catch {
-      toast.error("Falha ao sincronizar alertas com a API unificada.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao sincronizar alertas com a API unificada.");
     }
   };
 
@@ -45,8 +45,8 @@ export default function Alertas() {
       toast.success("Alerta emergencial emitido e enviado para os dispositivos móveis!");
       setOpenCadastro(false);
       carregarAlertas();
-    } catch {
-      toast.error("Erro ao publicar o alerta no Supabase.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao publicar o alerta no Supabase.");
     }
   };
 
@@ -68,8 +68,8 @@ export default function Alertas() {
       toast.success("Parâmetros do alerta modificados.");
       setOpenEdicao(false);
       carregarAlertas();
-    } catch {
-      toast.error("Erro ao atualizar o registro no banco de dados.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao atualizar o registro no banco de dados.");
     }
   };
 
@@ -78,8 +78,8 @@ export default function Alertas() {
       await alertaService.marcarComoLido(id);
       toast.success("Alerta arquivado e removido do painel ativo.");
       carregarAlertas();
-    } catch {
-      toast.error("Falha ao atualizar o estado do alerta.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao atualizar o estado do alerta.");
     }
   };
 
@@ -89,8 +89,8 @@ export default function Alertas() {
       await alertaService.deletar(id);
       toast.success("Registro removido com sucesso.");
       carregarAlertas();
-    } catch {
-      toast.error("Falha ao deletar a publicação polimórfica.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao deletar a publicação polimórfica.");
     }
   };
 

@@ -19,8 +19,8 @@ export default function Campanhas() {
     try {
       const dados = await campanhaService.listarTodas();
       setCampanhas(dados);
-    } catch {
-      toast.error("Erro ao sincronizar campanhas com a base Java.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao sincronizar campanhas com a base Java.");
     }
   };
 
@@ -49,8 +49,8 @@ export default function Campanhas() {
       toast.success("Campanha comunitária lançada com sucesso!");
       setOpenCadastro(false);
       carregarCampanhas();
-    } catch {
-      toast.error("Erro ao salvar a campanha no Supabase.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao salvar a campanha no Supabase.");
     }
   };
 
@@ -76,8 +76,8 @@ export default function Campanhas() {
       toast.success("Campanha atualizada com sucesso!");
       setOpenEdicao(false);
       carregarCampanhas();
-    } catch {
-      toast.error("Falha ao modificar os dados da campanha.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao modificar os dados da campanha.");
     }
   };
 
@@ -87,8 +87,8 @@ export default function Campanhas() {
       await campanhaService.deletar(id);
       toast.success("Campanha removida da base.");
       carregarCampanhas();
-    } catch {
-      toast.error("Erro ao deletar o registro polimórfico.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao deletar o registro polimórfico.");
     }
   };
 
