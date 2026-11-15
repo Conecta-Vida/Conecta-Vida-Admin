@@ -1,0 +1,15 @@
+# Publicação do painel administrativo no Netlify.
+[build]
+  base = "conecta-a-vida-administrativo"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Aplicação de página única: qualquer rota abre o index.html
+# (inclui /redefinir-senha, usada pelo link do e-mail de recuperação).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
