@@ -54,8 +54,8 @@ O site `conecta-vida-admin` já existe na conta. Em **Project configuration → 
 
 ## Configuração do Supabase (painel do Supabase → Authentication)
 
-1. **URL Configuration → Redirect URLs**: adicione `https://conecta-vida-admin.netlify.app/redefinir-senha`. É a página que recebe o link do e-mail "esqueci minha senha", tanto do app quanto do painel.
-2. **E-mails**: o serviço de e-mail padrão do Supabase só envia para membros do projeto e tem limite baixo por hora. Para uso real, configure um SMTP próprio em **Emails → SMTP Settings**. Para uma demonstração sem SMTP, desligue **Sign In / Providers → Email → Confirm email** (o cadastro passa a entrar direto).
+1. **URL Configuration → Redirect URLs**: adicione `https://conecta-vida-admin.netlify.app/**`. Cobre as duas páginas que recebem links de e-mail: `/redefinir-senha` ("esqueci minha senha", do app e do painel) e `/email-confirmado` (confirmação de cadastro do app). Em **Site URL**, use `https://conecta-vida-admin.netlify.app/email-confirmado`.
+2. **E-mails**: a confirmação de e-mail no cadastro fica **ligada**. O serviço de e-mail padrão do Supabase só envia para membros do projeto e tem limite baixo por hora, então configure um SMTP próprio em **Emails → SMTP Settings** (por exemplo Resend, Brevo ou uma conta do Gmail com senha de app); sem isso, os e-mails de confirmação e de recuperação não chegam aos usuários. Contas criadas pelo painel já nascem confirmadas.
 
 ## Contas antigas (da API Java)
 
