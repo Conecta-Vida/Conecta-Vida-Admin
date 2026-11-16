@@ -14,6 +14,7 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import { authService } from "../services/api";
+import { AlterarSenha } from "./AlterarSenha";
 
 export default function AppLayout() {
   const location = useLocation();
@@ -95,7 +96,8 @@ export default function AppLayout() {
         </nav>
 
         {/* RODAPÉ DO MENU */}
-        <div className="border-t border-slate-100 p-4">
+        <div className="border-t border-slate-100 p-4 space-y-1">
+          <AlterarSenha />
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50"
