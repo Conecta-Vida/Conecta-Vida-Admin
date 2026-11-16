@@ -1,4 +1,4 @@
-import { supabase, SUPABASE_URL } from './supabase';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase';
 
 // ===================================================================
 // CONTRATOS DE DADOS / INTERFACES (ALINHADOS COM AS TABELAS DO SUPABASE)
@@ -180,6 +180,41 @@ export const authService = {
       throw new Error('Acesso restrito a administradores.');
     }
     return { ...paraUsuario(perfil as LinhaUsuario), token: data.session.access_token };
+  },
+  /** O login com Microsoft está ligado no Supabase? (o botão só aparece se estiver) */
+  microsoftDisponivel: async (): Promise<boolean> => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY },
+      });
+      return Boolean((await r.json())?.external?.azure);
+    } catch {
+      return false;
+    }
+  },
+  /** Vai para a tela de login da Microsoft; volta para /login com a sessão. */
+  loginMicrosoft: async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: { scopes: 'email', redirectTo: `${window.location.origin}/login` },
+    });
+    if (error) throw new Error(error.message);
+  },
+  /**
+   * Depois de voltar da Microsoft: confere se a conta é de administrador.
+   * Devolve null quando não há sessão (ainda não houve login).
+   */
+  concluirLoginExterno: async (): Promise<any | null> => {
+    const { data } = await supabase.auth.getSession();
+    const sessao = data.session;
+    if (!sessao) return null;
+    const { data: perfil } = await supabase
+      .from('usuarios').select(COLUNAS_USUARIO).eq('auth_id', sessao.user.id).maybeSingle();
+    if (!perfil || perfil.permissao !== 'Administrador') {
+      await supabase.auth.signOut();
+      throw new Error(perfil ? 'Acesso restrito a administradores.' : 'Perfil não encontrado para esta conta.');
+    }
+    return { ...paraUsuario(perfil as LinhaUsuario), token: sessao.access_token };
   },
   logout: async (): Promise<void> => {
     localStorage.removeItem(CHAVE_SESSAO);

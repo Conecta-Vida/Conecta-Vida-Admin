@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartPulse, Lock, Mail, Loader2 } from "lucide-react";
 import { authService } from "../services/api";
@@ -12,6 +12,35 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false); // Estado para animação de carregamento do botão
+  const [microsoft, setMicrosoft] = useState(false);
+
+  // Mostra "Entrar com Microsoft" só se o provedor estiver ligado no Supabase,
+  // e conclui o login quando a Microsoft devolve o usuário para esta página.
+  useEffect(() => {
+    authService.microsoftDisponivel().then(setMicrosoft);
+    const voltouDoProvedor = /access_token|code=/.test(window.location.hash + window.location.search);
+    if (!voltouDoProvedor) return;
+    setLoading(true);
+    authService.concluirLoginExterno()
+      .then((usuario) => {
+        if (!usuario) return;
+        localStorage.setItem("@conecta:admin", JSON.stringify(usuario));
+        toast.success(`Bem-vindo de volta, ${usuario.nome}!`);
+        navigate("/");
+      })
+      .catch((error) => toast.error(error.message))
+      .finally(() => setLoading(false));
+  }, [navigate]);
+
+  const handleMicrosoft = async () => {
+    setLoading(true);
+    try {
+      await authService.loginMicrosoft();
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível abrir o login da Microsoft.");
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // Impede o recarregamento padrão da página ao enviar o formulário
@@ -104,6 +133,29 @@ export default function Login() {
               "Entrar no Sistema"
             )}
           </Button>
+
+          {microsoft && (
+            <>
+              <div className="flex items-center gap-3 text-xs font-semibold text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" /> ou <span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={handleMicrosoft}
+                className="w-full h-11 font-bold gap-2 border-slate-300 text-slate-700"
+              >
+                <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                </svg>
+                Entrar com Microsoft
+              </Button>
+            </>
+          )}
 
           <button
             type="button"
