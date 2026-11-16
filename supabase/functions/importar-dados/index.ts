@@ -198,6 +198,8 @@ async function importarUnidades(db: SupabaseClient) {
       telefone: telefone(e.numero_telefone_estabelecimento),
       endereco: cortar(endereco, 255),
       codigo_cnes: e.codigo_cnes,
+      latitude: typeof e.latitude_estabelecimento_decimo_grau === "number" ? e.latitude_estabelecimento_decimo_grau : null,
+      longitude: typeof e.longitude_estabelecimento_decimo_grau === "number" ? e.longitude_estabelecimento_decimo_grau : null,
       ...horario(e.descricao_turno_atendimento),
       ...(e.endereco_email_estabelecimento && { email: cortar(String(e.endereco_email_estabelecimento).toLowerCase(), 100) }),
     };
