@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Users, AlertTriangle, Megaphone, Newspaper, Activity, Loader2 } from "lucide-react";
-import { dashboardService, logService, type DashboardStats, type ChartData, type LogAtividade } from "../services/api";
+import { Users, AlertTriangle, Megaphone, Newspaper, Activity, Loader2, HeartHandshake, ClipboardCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { dashboardService, logService, usoService, type DashboardStats, type ChartData, type LogAtividade, type UsoDoApp } from "../services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
@@ -13,16 +14,19 @@ export default function Index() {
   const [stats, setStats] = useState<DashboardStats>({ totalUsuarios: 0, alertasAtivos: 0, campanhasAtivas: 0, noticiasPublicadas: 0 });
   const [grafico, setGrafico] = useState<ChartData[]>([]);
   const [logs, setLogs] = useState<LogAtividade[]>([]);
+  const [uso, setUso] = useState<UsoDoApp | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarDashboard = async () => {
       try {
-        const [dadosStats, dadosGrafico, dadosLogs] = await Promise.all([
+        const [dadosStats, dadosGrafico, dadosLogs, dadosUso] = await Promise.all([
           dashboardService.getStats(),
           dashboardService.getChartData(),
-          logService.listarRecentes()
+          logService.listarRecentes(),
+          usoService.carregar().catch(() => null),
         ]);
+        setUso(dadosUso);
 
         if (dadosStats) setStats(dadosStats);
         if (dadosGrafico) setGrafico(dadosGrafico);
@@ -108,10 +112,9 @@ export default function Index() {
           </CardHeader>
           <CardContent className="h-[240px] flex items-end justify-between gap-2 pt-4 px-4">
             {grafico.map((item, index) => {
-              // Calcula a porcentagem real da barra baseada no teto máximo atual de usuários
-              const percentualAltura = stats.totalUsuarios > 0 
-                ? (item.quantidade / stats.totalUsuarios) * 100 
-                : 0;
+              // Altura proporcional ao mês com mais publicações.
+              const maior = Math.max(...grafico.map((g) => g.quantidade), 1);
+              const percentualAltura = (item.quantidade / maior) * 100;
 
               return (
                 <div key={index} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
@@ -120,7 +123,7 @@ export default function Index() {
                     style={{ height: `${percentualAltura}%` }}
                   >
                     <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                      {item.quantidade} users
+                      {item.quantidade} publicações
                     </span>
                   </div>
                   <span className="text-xs font-semibold text-slate-400 uppercase mt-1">{item.mes}</span>
@@ -158,6 +161,82 @@ export default function Index() {
           </CardContent>
         </Card>
       </div>
+
+      {/* USO DO APLICATIVO: o que os cidadãos fazem de fato */}
+      {uso && (
+        <div className="grid gap-6 md:grid-cols-7">
+          <Card className="md:col-span-4 border-none shadow-sm bg-white">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-800">Campanhas mais procuradas</CardTitle>
+                <p className="text-xs text-slate-400">Pessoas inscritas pelo aplicativo (titulares e dependentes)</p>
+              </div>
+              <ClipboardCheck className="w-4 h-4 text-slate-400" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {uso.campanhasMaisProcuradas.length === 0 && (
+                <p className="py-8 text-center text-sm italic text-slate-400">Nenhuma inscrição ainda.</p>
+              )}
+              {uso.campanhasMaisProcuradas.map((c) => {
+                const maior = uso.campanhasMaisProcuradas[0]?.total || 1;
+                return (
+                  <Link key={c.id} to={`/campanhas/${c.id}`} className="block group">
+                    <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                      <span className="truncate pr-3 group-hover:text-blue-700">{c.titulo}</span>
+                      <span className="shrink-0 text-slate-500">{c.total}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100">
+                      <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${(c.total / maior) * 100}%` }} />
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-3 border-none shadow-sm bg-white">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-800">Famílias no app</CardTitle>
+                <p className="text-xs text-slate-400">Dependentes e inscrições feitas por responsáveis</p>
+              </div>
+              <HeartHandshake className="w-4 h-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-violet-50 p-3">
+                  <p className="text-2xl font-black text-violet-700">{uso.dependentesAtivos}</p>
+                  <p className="text-xs font-medium text-violet-700/80">dependentes ativos</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-3">
+                  <p className="text-2xl font-black text-amber-700">{uso.dependentesPendentes}</p>
+                  <p className="text-xs font-medium text-amber-700/80">aguardando autorização</p>
+                </div>
+                <div className="col-span-2 rounded-xl bg-slate-50 p-3">
+                  <p className="text-2xl font-black text-slate-800">
+                    {uso.inscricoesDeDependentes} <span className="text-sm font-semibold text-slate-400">de {uso.totalInscricoes}</span>
+                  </p>
+                  <p className="text-xs font-medium text-slate-500">inscrições feitas para dependentes</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Inscrições por mês</p>
+                <div className="flex h-20 items-end gap-2">
+                  {uso.inscricoesPorMes.map((m) => {
+                    const maior = Math.max(...uso.inscricoesPorMes.map((x) => x.quantidade), 1);
+                    return (
+                      <div key={m.mes} className="flex flex-1 flex-col items-center gap-1 h-full justify-end" title={`${m.quantidade} inscrição(ões)`}>
+                        <div className="w-full rounded-t bg-emerald-500/80 min-h-[3px]" style={{ height: `${(m.quantidade / maior) * 100}%` }} />
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase">{m.mes}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { supabase, SUPABASE_URL } from './supabase';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase';
 
 // ===================================================================
 // CONTRATOS DE DADOS / INTERFACES (ALINHADOS COM AS TABELAS DO SUPABASE)
@@ -180,6 +180,41 @@ export const authService = {
       throw new Error('Acesso restrito a administradores.');
     }
     return { ...paraUsuario(perfil as LinhaUsuario), token: data.session.access_token };
+  },
+  /** O login com Microsoft está ligado no Supabase? (o botão só aparece se estiver) */
+  microsoftDisponivel: async (): Promise<boolean> => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY },
+      });
+      return Boolean((await r.json())?.external?.azure);
+    } catch {
+      return false;
+    }
+  },
+  /** Vai para a tela de login da Microsoft; volta para /login com a sessão. */
+  loginMicrosoft: async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: { scopes: 'email', redirectTo: `${window.location.origin}/login` },
+    });
+    if (error) throw new Error(error.message);
+  },
+  /**
+   * Depois de voltar da Microsoft: confere se a conta é de administrador.
+   * Devolve null quando não há sessão (ainda não houve login).
+   */
+  concluirLoginExterno: async (): Promise<any | null> => {
+    const { data } = await supabase.auth.getSession();
+    const sessao = data.session;
+    if (!sessao) return null;
+    const { data: perfil } = await supabase
+      .from('usuarios').select(COLUNAS_USUARIO).eq('auth_id', sessao.user.id).maybeSingle();
+    if (!perfil || perfil.permissao !== 'Administrador') {
+      await supabase.auth.signOut();
+      throw new Error(perfil ? 'Acesso restrito a administradores.' : 'Perfil não encontrado para esta conta.');
+    }
+    return { ...paraUsuario(perfil as LinhaUsuario), token: sessao.access_token };
   },
   logout: async (): Promise<void> => {
     localStorage.removeItem(CHAVE_SESSAO);
@@ -581,6 +616,105 @@ export const dashboardService = {
       if (item) item.quantidade += 1;
     }
     return serie.map(({ mes, quantidade }) => ({ mes, quantidade }));
+  },
+};
+
+// ---------- Uso do aplicativo (indicadores reais) ----------
+export interface UsoDoApp {
+  campanhasMaisProcuradas: { id: number; titulo: string; total: number }[];
+  inscricoesPorMes: ChartData[];
+  dependentesAtivos: number;
+  dependentesPendentes: number;
+  inscricoesDeDependentes: number;
+  totalInscricoes: number;
+}
+
+export interface DependenteAdmin {
+  id: number;
+  nome: string;
+  parentesco: string;
+  idade: number;
+  status: 'ativo' | 'pendente' | 'revogado';
+  origem: string;
+  emailDependente: string;
+  titularNome: string;
+  titularEmail: string;
+  criadoEm: string;
+}
+
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const idadeEm = (nascimento: string) => {
+  const n = new Date(`${nascimento}T00:00:00`);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - n.getFullYear();
+  if (hoje.getMonth() < n.getMonth() || (hoje.getMonth() === n.getMonth() && hoje.getDate() < n.getDate())) idade--;
+  return idade;
+};
+
+export const usoService = {
+  /** Inscrições e dependentes: o que os cidadãos realmente fazem no app. */
+  carregar: async (): Promise<UsoDoApp> => {
+    const [inscricoes, dependentes] = await Promise.all([
+      supabase.from('usuarios_campanhas').select('comunicacao_id, dependente_id, data_inscricao, campanha:comunicacoes(titulo)'),
+      supabase.from('dependentes').select('status'),
+    ]);
+    if (inscricoes.error) falhar(inscricoes.error, 'Não foi possível carregar as inscrições');
+    if (dependentes.error) falhar(dependentes.error, 'Não foi possível carregar os dependentes');
+
+    const linhas = inscricoes.data as any[];
+    const porCampanha = new Map<number, { id: number; titulo: string; total: number }>();
+    for (const l of linhas) {
+      const atual = porCampanha.get(l.comunicacao_id) ?? { id: l.comunicacao_id, titulo: l.campanha?.titulo ?? 'Campanha removida', total: 0 };
+      atual.total += 1;
+      porCampanha.set(l.comunicacao_id, atual);
+    }
+
+    const hoje = new Date();
+    const serie = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - 5 + i, 1);
+      return { chave: `${d.getFullYear()}-${d.getMonth()}`, mes: MESES_CURTOS[d.getMonth()], quantidade: 0 };
+    });
+    for (const l of linhas) {
+      if (!l.data_inscricao) continue;
+      const d = new Date(l.data_inscricao);
+      const item = serie.find((s) => s.chave === `${d.getFullYear()}-${d.getMonth()}`);
+      if (item) item.quantidade += 1;
+    }
+
+    const status = (dependentes.data as { status: string }[]).map((d) => d.status);
+    return {
+      campanhasMaisProcuradas: [...porCampanha.values()].sort((a, b) => b.total - a.total).slice(0, 5),
+      inscricoesPorMes: serie.map(({ mes, quantidade }) => ({ mes, quantidade })),
+      dependentesAtivos: status.filter((s) => s === 'ativo').length,
+      dependentesPendentes: status.filter((s) => s === 'pendente').length,
+      inscricoesDeDependentes: linhas.filter((l) => l.dependente_id !== null).length,
+      totalInscricoes: linhas.length,
+    };
+  },
+};
+
+export const dependenteService = {
+  /** Todos os vínculos titular–dependente, para acompanhamento (somente leitura). */
+  listar: async (): Promise<DependenteAdmin[]> => {
+    const { data, error } = await supabase.from('dependentes')
+      .select('id, nome_completo, parentesco, data_nascimento, status, autorizacao_origem, email_dependente, criado_em, titular:usuarios(nome, email)')
+      .order('criado_em', { ascending: false });
+    if (error) falhar(error, 'Não foi possível listar os dependentes');
+    return (data as any[]).map((d) => ({
+      id: d.id,
+      nome: d.nome_completo,
+      parentesco: d.parentesco,
+      idade: idadeEm(d.data_nascimento),
+      status: d.status,
+      origem: d.autorizacao_origem === 'aceite_do_dependente'
+        ? 'Autorizado pelo dependente'
+        : d.status === 'pendente' ? 'Aguardando o dependente' : 'Declaração do responsável',
+      emailDependente: d.email_dependente ?? '',
+      titularNome: d.titular?.nome ?? '—',
+      titularEmail: d.titular?.email ?? '',
+      criadoEm: d.criado_em,
+    }));
   },
 };
 

@@ -57,6 +57,17 @@ O site `conecta-vida-admin` já existe na conta. Em **Project configuration → 
 1. **URL Configuration → Redirect URLs**: adicione `https://conecta-vida-admin.netlify.app/**`. Cobre as duas páginas que recebem links de e-mail: `/redefinir-senha` ("esqueci minha senha", do app e do painel) e `/email-confirmado` (confirmação de cadastro do app). Em **Site URL**, use `https://conecta-vida-admin.netlify.app/email-confirmado`.
 2. **E-mails**: a confirmação de e-mail no cadastro fica **ligada**. O serviço de e-mail padrão do Supabase só envia para membros do projeto e tem limite baixo por hora, então configure um SMTP próprio em **Emails → SMTP Settings** (por exemplo Resend, Brevo ou uma conta do Gmail com senha de app); sem isso, os e-mails de confirmação e de recuperação não chegam aos usuários. Contas criadas pelo painel já nascem confirmadas.
 
+## Login com Microsoft (opcional)
+
+O app e o painel já têm o botão **Entrar com Microsoft**; ele aparece sozinho quando o provedor é ligado. Para ligar:
+
+1. No [portal do Azure](https://portal.azure.com), em **Microsoft Entra ID → Registros de aplicativo → Novo registro**, crie um app. Em "Tipos de conta", escolha **contas em qualquer diretório organizacional e contas Microsoft pessoais**. Em "URI de redirecionamento" (Web), use `https://pborxjuuexiqollesfxw.supabase.co/auth/v1/callback`.
+2. Copie o **ID do aplicativo (cliente)** e crie um segredo em **Certificados e segredos**; copie o **valor** do segredo.
+3. No Supabase, em **Authentication → Sign In / Providers → Azure**, ligue o provedor e cole o ID e o segredo. Deixe "Azure Tenant URL" em branco (aceita qualquer conta Microsoft).
+4. Em **Authentication → URL Configuration → Redirect URLs**, adicione também `https://conecta-vida-app.netlify.app` e `br.edu.ifsp.conectavida://login-callback`.
+
+Quem entrar com Microsoft pela primeira vez ganha um perfil com o nome da conta Microsoft. Se já existir um perfil com o mesmo e-mail, ele é aproveitado (com inscrições e dependentes). No painel, continua valendo a regra: só entra quem tem permissão de Administrador.
+
 ## Contas antigas (da API Java)
 
 As senhas antigas não podem ser migradas. Quem já tinha conta se cadastra de novo com o **mesmo e-mail**: o banco reconhece o perfil antigo e mantém inscrições e dependentes. Perfis de administrador antigos não são herdados automaticamente quando a confirmação de e-mail está desligada (seria possível tomar a conta de outra pessoa); um administrador cria ou promove o usuário pelo painel.
@@ -68,8 +79,24 @@ As senhas antigas não podem ser migradas. Quem já tinha conta se cadastra de n
 - **Unidades de Saúde**, **Campanhas**, **Alertas** e **Notícias**: cadastro completo.
 - **Imagens de capa**: enviadas pelo próprio painel para o Supabase Storage.
 - **Inscritos por campanha**: total em cada card e lista de participantes (titular ou dependente) nos detalhes.
+- **Dashboard**: além dos totais, campanhas mais procuradas, inscrições por mês e números de dependentes (dados reais de uso do app).
+- **Dependentes**: acompanhamento, somente leitura, dos vínculos entre titulares e dependentes (ativos, aguardando autorização e revogados).
 - **Dados reais automáticos**: a função `importar-dados` publica as notícias do Ministério da Saúde (duas vezes por dia) e atualiza as unidades de saúde de Bragança Paulista pelo CNES (todo mês). Os botões **Importar do Ministério da Saúde** e **Importar do CNES** fazem o mesmo na hora.
+- **Calendário nacional de saúde**: todo dia 1 a campanha do mês (Janeiro Branco, Outubro Rosa, Novembro Azul...) é publicada sozinha; os textos ficam na tabela `calendario_saude`.
+- **Arquivamento**: notícias importadas com mais de 60 dias saem do feed automaticamente.
 - **Encerramento automático**: todo dia o banco marca como encerradas as campanhas com data de término vencida.
 - **Login** restrito a administradores e **recuperação de senha** por e-mail.
 
 © 2026 Conecta Vida. Projeto acadêmico do IFSP Bragança Paulista.
+
+## Tarefas automáticas (pg_cron, horário de Brasília)
+
+| Tarefa | Quando |
+|---|---|
+| Importar notícias do Ministério da Saúde | todo dia, 06:10 e 18:10 |
+| Encerrar campanhas com data de término vencida | todo dia, 03:05 |
+| Arquivar notícias importadas com mais de 60 dias | todo dia, 03:20 |
+| Publicar a campanha do calendário nacional do mês | dia 1, 06:15 |
+| Atualizar as unidades de saúde pelo CNES | dia 1, 03:30 |
+
+Para conferir: `select jobname, schedule from cron.job;` no SQL Editor do Supabase.

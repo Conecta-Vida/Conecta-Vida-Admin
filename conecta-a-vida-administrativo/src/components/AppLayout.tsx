@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Newspaper,
+  HeartHandshake,
 } from "lucide-react";
 import { authService } from "../services/api";
 
@@ -33,6 +34,7 @@ export default function AppLayout() {
     { caminho: "/campanhas", label: "Campanhas", icone: Megaphone },
     { caminho: "/alertas", label: "Gestão de Alertas", icone: AlertTriangle },
     { caminho: "/noticias", label: "Notícias", icone: Newspaper },
+    { caminho: "/dependentes", label: "Dependentes", icone: HeartHandshake },
   ];
 
   return (
