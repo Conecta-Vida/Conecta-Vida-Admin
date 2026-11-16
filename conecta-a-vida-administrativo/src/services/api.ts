@@ -159,7 +159,17 @@ async function criarConta(dados: Usuario): Promise<Usuario> {
 export const authService = {
   /** Login do painel: só entra quem tem permissão de Administrador. */
   login: async (email: string, senha: string): Promise<any> => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
+    let { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
+    // Conta criada pela antiga API Java: confere a senha antiga, cria o login
+    // no Supabase com ela e tenta de novo.
+    if (error && /invalid login credentials/i.test(error.message)) {
+      const { data: migracao } = await supabase.functions.invoke('entrar-conta-antiga', {
+        body: { email: email.trim(), senha },
+      });
+      if (migracao?.migrada) {
+        ({ data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha }));
+      }
+    }
     if (error) {
       throw new Error(
         /invalid login credentials/i.test(error.message)
@@ -169,6 +179,7 @@ export const authService = {
             : error.message,
       );
     }
+    if (!data.user || !data.session) throw new Error('Não foi possível entrar. Tente novamente.');
     const { data: perfil, error: erroPerfil } = await supabase
       .from('usuarios').select(COLUNAS_USUARIO).eq('auth_id', data.user.id).maybeSingle();
     if (erroPerfil || !perfil) {
