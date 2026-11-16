@@ -1,7 +1,11 @@
 // Edge Function "importar-dados": traz dados REAIS de fontes oficiais.
 //
-//   alvo "noticias": notícias do Ministério da Saúde (feed do gov.br),
-//                    publicadas no app como NOTICIA com o link da fonte.
+//   alvo "noticias": notícias do Ministério da Saúde (feed do gov.br) e da
+//                    Agência SP (editoria de saúde do Governo do Estado),
+//                    publicadas no app como NOTICIA, com a imagem de capa e o
+//                    link da fonte. Abrangência: "Brasil", "Estado de SP" ou a
+//                    cidade da região citada no título/resumo.
+//   alvo "imagens":  busca a imagem de capa das notícias importadas sem imagem.
 //   alvo "unidades": unidades de saúde de Bragança Paulista no CNES
 //                    (dados abertos do Ministério da Saúde).
 //
@@ -105,17 +109,13 @@ async function importarNoticias(db: SupabaseClient) {
   const jaImportadas = new Set((existentes ?? []).map((l) => l.fonte_url));
 
   const novas = encontradas.filter((n) => !jaImportadas.has(n.url)).map((n) => {
-    // O banco guarda horário de Brasília sem fuso.
-    const publicada = new Date(n.data);
-    const local = Number.isNaN(publicada.getTime())
-      ? null
-      : new Date(publicada.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 19);
+    const local = dataLocal(n.data);
     return {
       tipo: "NOTICIA",
       titulo: cortar(n.titulo, 150),
       descricao: n.resumo || n.titulo,
       categoria: "Informativo",
-      localizacao: "Geral",
+      localizacao: abrangencia(`${n.titulo} ${n.resumo}`, "Brasil"),
       publico_alvo: "População Geral",
       status: "ATIVO",
       lido: false,
@@ -129,7 +129,137 @@ async function importarNoticias(db: SupabaseClient) {
     const { error } = await db.from("comunicacoes").upsert(novas, { onConflict: "fonte_url", ignoreDuplicates: true });
     if (error) throw new Error(`Não foi possível gravar as notícias: ${error.message}`);
   }
-  return { encontradas: encontradas.length, novas: novas.length, falhas };
+  // Capas das notícias novas (e das que ficaram sem imagem antes).
+  const imagens = await completarImagens(db, 20);
+  return { encontradas: encontradas.length, novas: novas.length, imagens, falhas };
+}
+
+// --------------------------------------------------------------- imagens
+// A imagem é copiada para o Storage do Supabase: imagens de outros sites
+// podem ser bloqueadas pelo navegador na versão web do app.
+const BUCKET = "comunicacoes";
+const EXTENSOES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+
+async function imagemDaMateria(url: string): Promise<string | null> {
+  try {
+    const html = await (await fetch(url, { headers: NAVEGADOR })).text();
+    const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return og ? decodificar(og[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function copiarImagem(db: SupabaseClient, origem: string | null, prefixo: string): Promise<string | null> {
+  if (!origem) return null;
+  try {
+    const resposta = await fetch(origem.replace(/^http:/, "https:"), { headers: NAVEGADOR });
+    const tipo = (resposta.headers.get("content-type") ?? "").split(";")[0].trim();
+    const extensao = EXTENSOES[tipo];
+    if (!resposta.ok || !extensao) return null;
+    const bytes = new Uint8Array(await resposta.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > 5 * 1024 * 1024) return null;
+    const caminho = `importadas/${prefixo}-${crypto.randomUUID()}.${extensao}`;
+    const { error } = await db.storage.from(BUCKET).upload(caminho, bytes, { contentType: tipo, cacheControl: "31536000" });
+    if (error) return null;
+    return db.storage.from(BUCKET).getPublicUrl(caminho).data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
+/** Busca e grava a capa das notícias importadas que ainda não têm imagem. */
+async function completarImagens(db: SupabaseClient, limite = 40) {
+  const { data, error } = await db.from("comunicacoes")
+    .select("id, fonte_url").not("fonte_url", "is", null).is("linkimagem", null)
+    .neq("status", "ARQUIVADO").order("data_postada", { ascending: false }).limit(limite);
+  if (error) throw new Error(error.message);
+  let com = 0;
+  for (const linha of data ?? []) {
+    const url = await copiarImagem(db, await imagemDaMateria(linha.fonte_url), "noticia");
+    if (!url) continue;
+    const r = await db.from("comunicacoes").update({ linkimagem: url }).eq("id", linha.id);
+    if (!r.error) com++;
+  }
+  return { verificadas: (data ?? []).length, comImagem: com };
+}
+
+// ----------------------------------------------------------- abrangência
+// Cidades da região: uma notícia que cita uma delas aparece para essa cidade.
+const CIDADES_DA_REGIAO = [
+  "Bragança Paulista", "Atibaia", "Itatiba", "Piracaia", "Joanópolis", "Vargem",
+  "Bom Jesus dos Perdões", "Nazaré Paulista", "Pinhalzinho", "Socorro", "Morungaba",
+  "Tuiuti", "Pedra Bela", "Amparo", "Jarinu", "Campinas", "Jundiaí",
+];
+
+function abrangencia(texto: string, padrao: string): string {
+  const alvo = semAcento(texto);
+  for (const cidade of CIDADES_DA_REGIAO) {
+    if (new RegExp(`\\b${semAcento(cidade)}\\b`).test(alvo)) return cidade;
+  }
+  return padrao;
+}
+
+async function orgao(db: SupabaseClient, nome: string, extra: Record<string, string>) {
+  const { data } = await db.from("instituicoes_saude").select("id").eq("nome", nome).maybeSingle();
+  if (data) return data.id as number;
+  const criado = await db.from("instituicoes_saude").insert({ nome, ...extra }).select("id").single();
+  if (criado.error) throw new Error(`Não foi possível cadastrar ${nome}: ${criado.error.message}`);
+  return criado.data.id as number;
+}
+
+/** Converte uma data do feed para o horário de Brasília sem fuso (como o banco guarda). */
+function dataLocal(bruta: string): string | null {
+  const d = new Date(bruta);
+  return Number.isNaN(d.getTime()) ? null : new Date(d.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 19);
+}
+
+// ---------------------------------------------- notícias da Agência SP
+async function importarAgenciaSP(db: SupabaseClient) {
+  const feed = "https://www.agenciasp.sp.gov.br/editoria/saude/feed/";
+  const falhas: string[] = [];
+  const itens: { titulo: string; resumo: string; url: string; data: string; imagem: string | null }[] = [];
+  try {
+    const resposta = await fetch(feed, { headers: NAVEGADOR, redirect: "follow" });
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    const xml = await resposta.text();
+    for (const [, corpo] of xml.matchAll(/<item>(.*?)<\/item>/gs)) {
+      const campo = (tag: string) => decodificar(corpo.match(new RegExp(`<${tag}[^>]*>(.*?)</${tag}>`, "s"))?.[1] ?? "");
+      const url = campo("link");
+      const titulo = campo("title");
+      if (!titulo || !url.startsWith("https://www.agenciasp.sp.gov.br/")) continue;
+      const imagem = corpo.match(/<img[^>]+src="([^"]+\.(?:jpe?g|png|webp))"/i)?.[1] ?? null;
+      itens.push({ titulo, resumo: campo("description"), url, data: campo("pubDate"), imagem });
+    }
+  } catch (e) {
+    falhas.push(`${feed}: ${(e as Error).message}`);
+  }
+  if (itens.length === 0) return { encontradas: 0, novas: 0, falhas };
+
+  const { data: existentes } = await db.from("comunicacoes").select("fonte_url").in("fonte_url", itens.map((n) => n.url));
+  const ja = new Set((existentes ?? []).map((l) => l.fonte_url));
+  const novos = itens.filter((n) => !ja.has(n.url));
+  if (novos.length === 0) return { encontradas: itens.length, novas: 0, falhas };
+
+  const governo = await orgao(db, "Governo do Estado de São Paulo", {
+    tipo_instituicao: "Órgão Estadual", telefone: "Não informado",
+    linksite: "https://www.agenciasp.sp.gov.br/editoria/saude/", endereco: "São Paulo - SP",
+  });
+
+  let gravadas = 0;
+  for (const n of novos) {
+    const capa = await copiarImagem(db, n.imagem ?? await imagemDaMateria(n.url), "sp");
+    const local = dataLocal(n.data);
+    const r = await db.from("comunicacoes").upsert({
+      tipo: "NOTICIA", titulo: cortar(n.titulo, 150), descricao: n.resumo || n.titulo,
+      categoria: "Informativo", localizacao: abrangencia(`${n.titulo} ${n.resumo}`, "Estado de SP"),
+      publico_alvo: "População Geral", status: "ATIVO", lido: false, instituicao_id: governo,
+      fonte_url: n.url, linkimagem: capa, ...(local && { data_postada: local }),
+    }, { onConflict: "fonte_url", ignoreDuplicates: true });
+    if (r.error) falhas.push(`${n.titulo}: ${r.error.message}`); else gravadas++;
+  }
+  return { encontradas: itens.length, novas: gravadas, falhas };
 }
 
 // ------------------------------------------------------------- unidades
@@ -250,9 +380,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const resultado: Record<string, unknown> = {};
-    if (alvo === "noticias" || alvo === "tudo") resultado.noticias = await importarNoticias(db);
+    if (alvo === "noticias" || alvo === "tudo") {
+      resultado.noticias = await importarNoticias(db);
+      resultado.estado = await importarAgenciaSP(db);
+    }
+    if (alvo === "imagens") resultado.imagens = await completarImagens(db);
     if (alvo === "unidades" || alvo === "tudo") resultado.unidades = await importarUnidades(db);
-    if (Object.keys(resultado).length === 0) return responder(400, { mensagem: 'Informe alvo "noticias", "unidades" ou "tudo".' });
+    if (Object.keys(resultado).length === 0) return responder(400, { mensagem: 'Informe alvo "noticias", "unidades", "imagens" ou "tudo".' });
 
     if (autor) {
       await db.from("logs_atividade").insert({ usuario_id: autor, acao: `Importou dados oficiais (${alvo})` });
