@@ -68,8 +68,24 @@ As senhas antigas não podem ser migradas. Quem já tinha conta se cadastra de n
 - **Unidades de Saúde**, **Campanhas**, **Alertas** e **Notícias**: cadastro completo.
 - **Imagens de capa**: enviadas pelo próprio painel para o Supabase Storage.
 - **Inscritos por campanha**: total em cada card e lista de participantes (titular ou dependente) nos detalhes.
+- **Dashboard**: além dos totais, campanhas mais procuradas, inscrições por mês e números de dependentes (dados reais de uso do app).
+- **Dependentes**: acompanhamento, somente leitura, dos vínculos entre titulares e dependentes (ativos, aguardando autorização e revogados).
 - **Dados reais automáticos**: a função `importar-dados` publica as notícias do Ministério da Saúde (duas vezes por dia) e atualiza as unidades de saúde de Bragança Paulista pelo CNES (todo mês). Os botões **Importar do Ministério da Saúde** e **Importar do CNES** fazem o mesmo na hora.
+- **Calendário nacional de saúde**: todo dia 1 a campanha do mês (Janeiro Branco, Outubro Rosa, Novembro Azul...) é publicada sozinha; os textos ficam na tabela `calendario_saude`.
+- **Arquivamento**: notícias importadas com mais de 60 dias saem do feed automaticamente.
 - **Encerramento automático**: todo dia o banco marca como encerradas as campanhas com data de término vencida.
 - **Login** restrito a administradores e **recuperação de senha** por e-mail.
 
 © 2026 Conecta Vida. Projeto acadêmico do IFSP Bragança Paulista.
+
+## Tarefas automáticas (pg_cron, horário de Brasília)
+
+| Tarefa | Quando |
+|---|---|
+| Importar notícias do Ministério da Saúde | todo dia, 06:10 e 18:10 |
+| Encerrar campanhas com data de término vencida | todo dia, 03:05 |
+| Arquivar notícias importadas com mais de 60 dias | todo dia, 03:20 |
+| Publicar a campanha do calendário nacional do mês | dia 1, 06:15 |
+| Atualizar as unidades de saúde pelo CNES | dia 1, 03:30 |
+
+Para conferir: `select jobname, schedule from cron.job;` no SQL Editor do Supabase.

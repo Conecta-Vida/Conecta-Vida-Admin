@@ -12,6 +12,7 @@ const Campanhas = lazy(() => import("./pages/Campanhas"));
 const CampanhaDetalhes = lazy(() => import("./pages/CampanhaDetalhes"));
 const Alertas = lazy(() => import("./pages/Alertas"));
 const Noticias = lazy(() => import("./pages/Noticias"));
+const Dependentes = lazy(() => import("./pages/Dependentes"));
 const Login = lazy(() => import("./pages/Login"));
 const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
 const EmailConfirmado = lazy(() => import("./pages/EmailConfirmado"));
@@ -65,6 +66,7 @@ function App() {
             <Route path="/campanhas/:id" element={<Suspense fallback={<TelaCarregamento />}><CampanhaDetalhes /></Suspense>} />
             <Route path="/alertas" element={<Suspense fallback={<TelaCarregamento />}><Alertas /></Suspense>} />
             <Route path="/noticias" element={<Suspense fallback={<TelaCarregamento />}><Noticias /></Suspense>} />
+            <Route path="/dependentes" element={<Suspense fallback={<TelaCarregamento />}><Dependentes /></Suspense>} />
           </Route>
         </Route>
 
