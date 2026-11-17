@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail, Globe } from "lucide-react";
-import { instituicaoService, type InstituicaoSaude } from "../services/api";
+import { useEffect, useMemo, useState } from "react";
+import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail, Globe, Search, BadgeCheck } from "lucide-react";
+import { instituicaoService, type InstituicaoSaude, type Municipio } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,17 +9,29 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import BotaoImportar from "../components/BotaoImportar";
+import { carregarInstituicoes as atualizarListaDosFormularios } from "../components/SeletorInstituicao";
 
 export default function Instituicoes() {
   const [instituicoes, setInstituicoes] = useState<InstituicaoSaude[]>([]);
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [instituicaoEditando, setInstituicaoEditando] = useState<InstituicaoSaude | null>(null);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  // "" = cadastradas no painel (órgãos e unidades sem município), "todas" ou o código IBGE.
+  const [cidade, setCidade] = useState<string>("3507605");
+  const [tipo, setTipo] = useState("Todos");
+  const [busca, setBusca] = useState("");
 
   const carregarInstituicoes = async () => {
     try {
       const dados = await instituicaoService.listarTodas();
       setInstituicoes(dados);
+      // Os formulários de notícia/campanha/alerta passam a ver as mudanças.
+      atualizarListaDosFormularios(true).catch(() => {});
+      const codigos = [...new Set(dados.map((i) => i.codigoMunicipio).filter((c): c is number => !!c))];
+      setMunicipios(await instituicaoService.municipios(codigos));
+      // Sem unidades de Bragança Paulista, começa mostrando todas.
+      if (!codigos.includes(3507605)) setCidade((atual) => (atual === "3507605" ? "todas" : atual));
     } catch (err) {
       toast.error((err as Error)?.message || "Erro ao sincronizar mapa de unidades de saúde.");
     }
@@ -28,6 +40,28 @@ export default function Instituicoes() {
   useEffect(() => {
     carregarInstituicoes();
   }, []);
+
+  // Quantas unidades há em cada cidade (para o seletor).
+  const porCidade = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const i of instituicoes) {
+      const chave = i.codigoMunicipio ? String(i.codigoMunicipio) : "";
+      contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+    }
+    return contagem;
+  }, [instituicoes]);
+
+  const daCidade = useMemo(() => instituicoes.filter((i) =>
+    cidade === "todas" || (cidade === "" ? !i.codigoMunicipio : String(i.codigoMunicipio) === cidade)), [instituicoes, cidade]);
+
+  const tipos = useMemo(() => ["Todos", ...[...new Set(daCidade.map((i) => i.tipoInstituicao))].sort()], [daCidade]);
+
+  const visiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return daCidade.filter((i) =>
+      (tipo === "Todos" || i.tipoInstituicao === tipo) &&
+      (!termo || `${i.nome} ${i.endereco ?? ""}`.toLowerCase().includes(termo)));
+  }, [daCidade, tipo, busca]);
 
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -117,8 +151,8 @@ export default function Instituicoes() {
               <Plus className="w-5 h-5 text-blue-600" /> Cadastrar Ponto de Atendimento Médico
             </DialogTitle>
             <form onSubmit={handleCadastro} className="space-y-4 pt-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-1 grid gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Tipo</Label>
                   <select name="tipoInstituicao" required className="h-10 border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
                     <option value="UBS">UBS</option>
@@ -128,20 +162,22 @@ export default function Instituicoes() {
                     <option value="CAPS">CAPS</option>
                     <option value="SAMU">SAMU</option>
                     <option value="Órgão Federal">Órgão Federal</option>
+                    <option value="Órgão Estadual">Órgão Estadual</option>
+                    <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
-                <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
+                <div className="sm:col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Endereço Completo</Label><Input name="endereco" placeholder="Rua, Número, Bairro - Cidade/SP" /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Telefone de Contato</Label><Input name="telefone" required placeholder="(11) 4003-0000" /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">E-mail Institucional</Label><Input name="email" type="email" placeholder="unidade@saude.gov.br" /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Link do Website Oficial (linksite)</Label><Input name="linksite" placeholder="https://saude.com.br" /></div>
               <div className="grid gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Segunda a Sexta</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" placeholder="Ex: 07:00 às 19:00" /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" placeholder="Ex: 08:00 às 12:00" /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" placeholder="Ex: Fechado" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Segunda a Sexta</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" placeholder="Ex: 07:00 às 19:00" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" placeholder="Ex: 08:00 às 12:00" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" placeholder="Ex: Fechado" /></div>
               </div>
               <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-2 hover:bg-blue-700 border-none">Registar Unidade no Banco</Button>
             </form>
@@ -150,8 +186,37 @@ export default function Instituicoes() {
         </div>
       </div>
 
+      {/* Filtros: o app busca no CNES as unidades da cidade de cada usuário,
+          então a lista tem várias cidades. */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:flex-row md:items-center">
+        <select value={cidade} onChange={(e) => { setCidade(e.target.value); setTipo("Todos"); }}
+          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold md:w-72">
+          {municipios.map((m) => (
+            <option key={m.codigo} value={String(m.codigo)}>{m.nome} - {m.uf} ({porCidade.get(String(m.codigo)) ?? 0})</option>
+          ))}
+          <option value="">Cadastradas no painel e órgãos ({porCidade.get("") ?? 0})</option>
+          <option value="todas">Todas as cidades ({instituicoes.length})</option>
+        </select>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou endereço" className="pl-9" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {tipos.map((t) => (
+            <button key={t} onClick={() => setTipo(t)}
+              className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${tipo === t ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="-mt-2 text-xs font-semibold text-slate-400">{visiveis.length} unidade(s)</p>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {instituicoes.map((inst) => (
+        {visiveis.length === 0 && (
+          <p className="col-span-full py-10 text-center text-sm italic text-slate-400">Nenhuma unidade com esses filtros.</p>
+        )}
+        {visiveis.map((inst) => (
           <Card key={inst.id} className="bg-white border border-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
             <CardContent className="p-5 space-y-4">
               
@@ -168,7 +233,10 @@ export default function Instituicoes() {
               </div>
 
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{inst.tipoInstituicao}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{inst.tipoInstituicao}</span>
+                  {inst.doCnes && <span title="Dados oficiais do CNES (Ministério da Saúde)" className="flex items-center gap-0.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100"><BadgeCheck className="h-3 w-3" /> CNES</span>}
+                </div>
                 <h3 className="text-lg font-black text-slate-900 mt-2 pr-8 truncate">{inst.nome}</h3>
               </div>
               <div className="space-y-2 text-xs font-semibold text-slate-600 border-t pt-3 border-slate-50">
@@ -192,7 +260,7 @@ export default function Instituicoes() {
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Edit2 className="w-5 h-5 text-amber-500" /> Atualizar Unidade de Saúde</DialogTitle>
           {instituicaoEditando && (
             <form onSubmit={handleEdicao} className="space-y-4 pt-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Tipo</Label>
                   <select name="tipoInstituicao" defaultValue={instituicaoEditando.tipoInstituicao} className="h-10 border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -203,12 +271,14 @@ export default function Instituicoes() {
                     <option value="CAPS">CAPS</option>
                     <option value="SAMU">SAMU</option>
                     <option value="Órgão Federal">Órgão Federal</option>
+                    <option value="Órgão Estadual">Órgão Estadual</option>
+                    <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
-                <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>
+                <div className="sm:col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Endereço</Label><Input name="endereco" defaultValue={instituicaoEditando.endereco || ""} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Telefone</Label><Input name="telefone" defaultValue={instituicaoEditando.telefone} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">E-mail</Label><Input name="email" type="email" defaultValue={instituicaoEditando.email || ""} /></div>
               </div>
@@ -220,9 +290,9 @@ export default function Instituicoes() {
               </div>
 
               <div className="grid gap-3 bg-amber-50/40 p-3 rounded-lg border border-amber-100">
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Seg a Sex</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" defaultValue={instituicaoEditando.horarioSegSex || ""} /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" defaultValue={instituicaoEditando.horarioSabado || ""} /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" defaultValue={instituicaoEditando.horarioDomingo || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Seg a Sex</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" defaultValue={instituicaoEditando.horarioSegSex || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" defaultValue={instituicaoEditando.horarioSabado || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" defaultValue={instituicaoEditando.horarioDomingo || ""} /></div>
               </div>
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-2 border-none">Salvar Alterações Cadastrais</Button>
             </form>

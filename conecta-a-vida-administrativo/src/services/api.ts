@@ -26,7 +26,13 @@ export interface InstituicaoSaude {
   horarioSegSex?: string;
   horarioSabado?: string;
   horarioDomingo?: string;
+  /** Código IBGE do município (unidades vindas do CNES). */
+  codigoMunicipio?: number;
+  /** Veio do cadastro oficial do CNES. */
+  doCnes?: boolean;
 }
+
+export interface Municipio { codigo: number; nome: string; uf: string; }
 
 export interface LogAtividade {
   id?: number;
@@ -46,6 +52,10 @@ export interface Alerta {
   localizacao?: string;
   lido: boolean;
   dataPostada?: string;
+  /** Link da matéria original (notícias importadas). */
+  fonteUrl?: string;
+  /** Instituição de saúde que publica (órgão, UBS, hospital...). */
+  instituicaoId?: number | null;
 }
 
 export interface Campanha {
@@ -60,6 +70,8 @@ export interface Campanha {
   dataFim: string;
   publicoAlvo?: string;
   status: string;
+  /** Instituição de saúde responsável pela campanha. */
+  instituicaoId?: number | null;
 }
 
 export interface InscritoCampanha {
@@ -339,6 +351,7 @@ type LinhaInstituicao = {
   id: number; tipo_instituicao: string; nome: string; email: string | null; telefone: string | null;
   linksite: string | null; endereco: string | null; horario_seg_sex: string | null;
   horario_sabado: string | null; horario_domingo: string | null;
+  codigo_municipio?: number | null; codigo_cnes?: number | null;
 };
 
 const paraInstituicao = (l: LinhaInstituicao): InstituicaoSaude => ({
@@ -352,6 +365,8 @@ const paraInstituicao = (l: LinhaInstituicao): InstituicaoSaude => ({
   horarioSegSex: l.horario_seg_sex ?? undefined,
   horarioSabado: l.horario_sabado ?? undefined,
   horarioDomingo: l.horario_domingo ?? undefined,
+  codigoMunicipio: l.codigo_municipio ?? undefined,
+  doCnes: l.codigo_cnes != null,
 });
 
 const instituicaoParaBanco = (d: InstituicaoSaude) => ({
@@ -367,6 +382,13 @@ const instituicaoParaBanco = (d: InstituicaoSaude) => ({
 });
 
 export const instituicaoService = {
+  /** Nomes dos municípios (IBGE) que aparecem na lista de unidades. */
+  municipios: async (codigos: number[]): Promise<Municipio[]> => {
+    if (codigos.length === 0) return [];
+    const { data, error } = await supabase.from('municipios_ibge').select('codigo, nome, uf').in('codigo', codigos).order('nome');
+    if (error) falhar(error, 'Não foi possível carregar as cidades');
+    return (data ?? []) as Municipio[];
+  },
   listarTodas: async (): Promise<InstituicaoSaude[]> => {
     const { data, error } = await supabase.from('instituicoes_saude').select('*').order('nome');
     if (error) falhar(error, 'Não foi possível listar as instituições');
@@ -401,6 +423,7 @@ type LinhaComunicacao = {
   categoria: string | null; linkimagem: string | null; localizacao: string | null;
   publico_alvo: string | null; status: string | null; lido: boolean | null;
   data_postada: string | null; data_inicio: string | null; data_fim: string | null;
+  fonte_url?: string | null;
 };
 
 const paraCampanha = (l: LinhaComunicacao): Campanha => ({
@@ -415,6 +438,7 @@ const paraCampanha = (l: LinhaComunicacao): Campanha => ({
   dataFim: l.data_fim ?? '',
   publicoAlvo: l.publico_alvo ?? undefined,
   status: l.status ?? 'ATIVA',
+  instituicaoId: l.instituicao_id,
 });
 
 const campanhaParaBanco = (d: Partial<Campanha>) => ({
@@ -427,6 +451,7 @@ const campanhaParaBanco = (d: Partial<Campanha>) => ({
   ...(d.status !== undefined && { status: d.status }),
   ...(d.dataInicio !== undefined && { data_inicio: dataParaBanco(d.dataInicio) }),
   ...(d.dataFim !== undefined && { data_fim: dataParaBanco(d.dataFim) }),
+  ...(d.instituicaoId !== undefined && { instituicao_id: d.instituicaoId }),
 });
 
 export const campanhaService = {
@@ -503,6 +528,8 @@ const paraAlerta = (l: LinhaComunicacao): Alerta => ({
   status: l.status ?? undefined,
   lido: l.lido ?? false,
   dataPostada: l.data_postada ?? undefined,
+  fonteUrl: l.fonte_url ?? undefined,
+  instituicaoId: l.instituicao_id,
 });
 
 const alertaParaBanco = (d: Partial<Alerta>) => ({
@@ -512,6 +539,7 @@ const alertaParaBanco = (d: Partial<Alerta>) => ({
   ...(d.localizacao !== undefined && { localizacao: vazioParaNulo(d.localizacao) }),
   ...(d.linkimagem !== undefined && { linkimagem: vazioParaNulo(d.linkimagem) }),
   ...(d.lido !== undefined && { lido: d.lido }),
+  ...(d.instituicaoId !== undefined && { instituicao_id: d.instituicaoId }),
 });
 
 /** Alertas e notícias têm os mesmos campos; só muda o tipo gravado. */
@@ -537,6 +565,12 @@ function servicoDeAvisos(tipo: 'ALERTA' | 'NOTICIA', nome: string) {
     },
     marcarComoLido: async (id: number): Promise<void> => {
       const { error } = await supabase.from('comunicacoes').update({ lido: true }).eq('id', id);
+      if (error) falhar(error, 'Não foi possível atualizar');
+    },
+    /** Arquivar tira do app (status ARQUIVADO); reativar devolve. */
+    definirArquivada: async (id: number, arquivada: boolean): Promise<void> => {
+      const { error } = await supabase.from('comunicacoes')
+        .update({ status: arquivada ? 'ARQUIVADO' : 'ATIVO', lido: arquivada }).eq('id', id);
       if (error) falhar(error, 'Não foi possível atualizar');
     },
     deletar: async (id: number): Promise<void> => {

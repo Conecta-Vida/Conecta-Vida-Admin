@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import ImagemUpload from "../components/ImagemUpload";
+import SeletorInstituicao, { instituicaoDoFormulario } from "../components/SeletorInstituicao";
 import { alertaService, type Alerta } from "../services/api";
 
 export default function Alertas() {
@@ -39,6 +40,7 @@ export default function Alertas() {
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
       linkimagem: (f.get("linkimagem") as string) || "",
+      instituicaoId: instituicaoDoFormulario(f),
       lido: false
     };
 
@@ -48,7 +50,7 @@ export default function Alertas() {
       setOpenCadastro(false);
       carregarAlertas();
     } catch (err) {
-      toast.error((err as Error)?.message || "Erro ao publicar o alerta no Supabase.");
+      toast.error((err as Error)?.message || "Erro ao publicar o alerta.");
     }
   };
 
@@ -63,6 +65,7 @@ export default function Alertas() {
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
       linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
+      instituicaoId: instituicaoDoFormulario(f),
       lido: alertaEditando.lido
     };
 
@@ -87,7 +90,7 @@ export default function Alertas() {
   };
 
   const handleDeletar = async (id: number) => {
-    if (!confirm("Remover este alerta apagará o histórico permanentemente do Supabase. Deseja continuar?")) return;
+    if (!confirm("Remover este alerta apaga o alerta permanentemente. Deseja continuar?")) return;
     try {
       await alertaService.deletar(id);
       toast.success("Registro removido com sucesso.");
@@ -111,7 +114,7 @@ export default function Alertas() {
             </Button>
           </DialogTrigger>
           {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl max-h-[90vh] overflow-y-auto">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
               <Radio className="w-5 h-5 text-amber-500" /> Lançar Transmissão de Emergência
             </DialogTitle>
@@ -124,7 +127,7 @@ export default function Alertas() {
                 <Label className="font-bold text-slate-700">Instruções de Contingência para a População</Label>
                 <textarea name="descricao" required rows={3} placeholder="Descreva os cuidados e orientações médicas que os cidadãos devem seguir no smartphone..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 font-medium" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Grau de Risco (Gatilho Push)</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -138,6 +141,7 @@ export default function Alertas() {
                   <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
                 </div>
               </div>
+              <SeletorInstituicao />
               <ImagemUpload />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Disparar Alerta para o Banco e Mobile
@@ -199,14 +203,14 @@ export default function Alertas() {
 
         {alertas.length === 0 && (
           <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
-            Nenhum alerta crítico ou surto ativo pendente no Supabase.
+            Nenhum alerta ativo no momento. Use "Emitir Alerta" para avisar a população sobre um surto ou emergência.
           </div>
         )}
       </div>
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
         {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Modificar Parâmetros do Alerta</DialogTitle>
           {alertaEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
@@ -218,7 +222,7 @@ export default function Alertas() {
                 <Label className="font-bold text-slate-700">Instruções de Contingência</Label>
                 <textarea name="descricao" defaultValue={alertaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 font-medium" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Grau de Risco</Label>
                   <select name="categoria" defaultValue={alertaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -232,7 +236,8 @@ export default function Alertas() {
                   <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
                 </div>
               </div>
-                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
+                <SeletorInstituicao defaultValue={alertaEditando.instituicaoId} />
+              <ImagemUpload defaultValue={alertaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Salvar Alterações Técnico-Operacionais
               </Button>
