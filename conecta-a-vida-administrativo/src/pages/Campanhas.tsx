@@ -57,7 +57,7 @@ export default function Campanhas() {
       setOpenCadastro(false);
       carregarCampanhas();
     } catch (err) {
-      toast.error((err as Error)?.message || "Erro ao salvar a campanha no Supabase.");
+      toast.error((err as Error)?.message || "Erro ao salvar a campanha.");
     }
   };
 
@@ -223,7 +223,7 @@ export default function Campanhas() {
 
         {campanhas.length === 0 && (
           <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
-            Nenhuma campanha ou mutirão comunitário cadastrado no Supabase.
+            Nenhuma campanha cadastrada ainda.
           </div>
         )}
       </div>

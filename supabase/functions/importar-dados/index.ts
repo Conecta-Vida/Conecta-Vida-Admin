@@ -145,7 +145,10 @@ async function imagemDaMateria(url: string): Promise<string | null> {
     const html = await (await fetch(url, { headers: NAVEGADOR })).text();
     const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
       ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return og ? decodificar(og[1]) : null;
+    if (!og) return null;
+    const imagem = decodificar(og[1]);
+    // Matérias sem foto usam o logotipo do site (ex.: gov.br/saude/logo.png): não serve de capa.
+    return /\/logo[^/]*\.(png|svg|jpe?g)$/i.test(imagem) ? null : imagem;
   } catch {
     return null;
   }

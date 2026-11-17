@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail, Globe } from "lucide-react";
-import { instituicaoService, type InstituicaoSaude } from "../services/api";
+import { useEffect, useMemo, useState } from "react";
+import { Home, Plus, Edit2, Trash2, MoreHorizontal, Phone, MapPin, Mail, Globe, Search, BadgeCheck } from "lucide-react";
+import { instituicaoService, type InstituicaoSaude, type Municipio } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,20 @@ export default function Instituicoes() {
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [instituicaoEditando, setInstituicaoEditando] = useState<InstituicaoSaude | null>(null);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  // "" = cadastradas no painel (órgãos e unidades sem município), "todas" ou o código IBGE.
+  const [cidade, setCidade] = useState<string>("3507605");
+  const [tipo, setTipo] = useState("Todos");
+  const [busca, setBusca] = useState("");
 
   const carregarInstituicoes = async () => {
     try {
       const dados = await instituicaoService.listarTodas();
       setInstituicoes(dados);
+      const codigos = [...new Set(dados.map((i) => i.codigoMunicipio).filter((c): c is number => !!c))];
+      setMunicipios(await instituicaoService.municipios(codigos));
+      // Sem unidades de Bragança Paulista, começa mostrando todas.
+      if (!codigos.includes(3507605)) setCidade((atual) => (atual === "3507605" ? "todas" : atual));
     } catch (err) {
       toast.error((err as Error)?.message || "Erro ao sincronizar mapa de unidades de saúde.");
     }
@@ -28,6 +37,28 @@ export default function Instituicoes() {
   useEffect(() => {
     carregarInstituicoes();
   }, []);
+
+  // Quantas unidades há em cada cidade (para o seletor).
+  const porCidade = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const i of instituicoes) {
+      const chave = i.codigoMunicipio ? String(i.codigoMunicipio) : "";
+      contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+    }
+    return contagem;
+  }, [instituicoes]);
+
+  const daCidade = useMemo(() => instituicoes.filter((i) =>
+    cidade === "todas" || (cidade === "" ? !i.codigoMunicipio : String(i.codigoMunicipio) === cidade)), [instituicoes, cidade]);
+
+  const tipos = useMemo(() => ["Todos", ...[...new Set(daCidade.map((i) => i.tipoInstituicao))].sort()], [daCidade]);
+
+  const visiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return daCidade.filter((i) =>
+      (tipo === "Todos" || i.tipoInstituicao === tipo) &&
+      (!termo || `${i.nome} ${i.endereco ?? ""}`.toLowerCase().includes(termo)));
+  }, [daCidade, tipo, busca]);
 
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -128,6 +159,8 @@ export default function Instituicoes() {
                     <option value="CAPS">CAPS</option>
                     <option value="SAMU">SAMU</option>
                     <option value="Órgão Federal">Órgão Federal</option>
+                    <option value="Órgão Estadual">Órgão Estadual</option>
+                    <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
                 <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
@@ -150,8 +183,37 @@ export default function Instituicoes() {
         </div>
       </div>
 
+      {/* Filtros: o app busca no CNES as unidades da cidade de cada usuário,
+          então a lista tem várias cidades. */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:flex-row md:items-center">
+        <select value={cidade} onChange={(e) => { setCidade(e.target.value); setTipo("Todos"); }}
+          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold md:w-72">
+          {municipios.map((m) => (
+            <option key={m.codigo} value={String(m.codigo)}>{m.nome} - {m.uf} ({porCidade.get(String(m.codigo)) ?? 0})</option>
+          ))}
+          <option value="">Cadastradas no painel e órgãos ({porCidade.get("") ?? 0})</option>
+          <option value="todas">Todas as cidades ({instituicoes.length})</option>
+        </select>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou endereço" className="pl-9" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {tipos.map((t) => (
+            <button key={t} onClick={() => setTipo(t)}
+              className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${tipo === t ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="-mt-2 text-xs font-semibold text-slate-400">{visiveis.length} unidade(s)</p>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {instituicoes.map((inst) => (
+        {visiveis.length === 0 && (
+          <p className="col-span-full py-10 text-center text-sm italic text-slate-400">Nenhuma unidade com esses filtros.</p>
+        )}
+        {visiveis.map((inst) => (
           <Card key={inst.id} className="bg-white border border-slate-100 shadow-sm overflow-hidden rounded-xl relative group">
             <CardContent className="p-5 space-y-4">
               
@@ -168,7 +230,10 @@ export default function Instituicoes() {
               </div>
 
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{inst.tipoInstituicao}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{inst.tipoInstituicao}</span>
+                  {inst.doCnes && <span title="Dados oficiais do CNES (Ministério da Saúde)" className="flex items-center gap-0.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100"><BadgeCheck className="h-3 w-3" /> CNES</span>}
+                </div>
                 <h3 className="text-lg font-black text-slate-900 mt-2 pr-8 truncate">{inst.nome}</h3>
               </div>
               <div className="space-y-2 text-xs font-semibold text-slate-600 border-t pt-3 border-slate-50">
@@ -203,6 +268,8 @@ export default function Instituicoes() {
                     <option value="CAPS">CAPS</option>
                     <option value="SAMU">SAMU</option>
                     <option value="Órgão Federal">Órgão Federal</option>
+                    <option value="Órgão Estadual">Órgão Estadual</option>
+                    <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
                 <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>

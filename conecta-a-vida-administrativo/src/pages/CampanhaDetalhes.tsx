@@ -50,7 +50,7 @@ export default function CampanhaDetalhes() {
     if (!id || !confirm("Remover esta campanha definitivamente do feed público?")) return;
     try {
       await campanhaService.deletar(Number(id));
-      toast.success("Campanha apagada do Supabase.");
+      toast.success("Campanha excluída.");
       navigate("/campanhas");
     } catch (err) {
       toast.error((err as Error)?.message || "Erro ao deletar.");

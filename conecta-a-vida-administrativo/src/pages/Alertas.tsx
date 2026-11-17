@@ -48,7 +48,7 @@ export default function Alertas() {
       setOpenCadastro(false);
       carregarAlertas();
     } catch (err) {
-      toast.error((err as Error)?.message || "Erro ao publicar o alerta no Supabase.");
+      toast.error((err as Error)?.message || "Erro ao publicar o alerta.");
     }
   };
 
@@ -87,7 +87,7 @@ export default function Alertas() {
   };
 
   const handleDeletar = async (id: number) => {
-    if (!confirm("Remover este alerta apagará o histórico permanentemente do Supabase. Deseja continuar?")) return;
+    if (!confirm("Remover este alerta apaga o alerta permanentemente. Deseja continuar?")) return;
     try {
       await alertaService.deletar(id);
       toast.success("Registro removido com sucesso.");
@@ -199,7 +199,7 @@ export default function Alertas() {
 
         {alertas.length === 0 && (
           <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
-            Nenhum alerta crítico ou surto ativo pendente no Supabase.
+            Nenhum alerta ativo no momento. Use "Emitir Alerta" para avisar a população sobre um surto ou emergência.
           </div>
         )}
       </div>

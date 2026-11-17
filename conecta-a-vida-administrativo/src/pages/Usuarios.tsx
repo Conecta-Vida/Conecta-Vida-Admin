@@ -231,7 +231,7 @@ export default function Usuarios() {
                 <TableCell className="text-slate-600 font-medium px-6 py-4">{u.email}</TableCell>
                 <TableCell className="text-slate-500 font-medium px-6 py-4">
                   {/* 🟢 Cálculo dinâmico da Idade baseado no ano atual (2026) */}
-                  {u.dataNascimento ? `${2026 - u.dataNascimento} anos` : "-"} / {u.sexo || "-"}
+                  {u.dataNascimento ? `${new Date().getFullYear() - u.dataNascimento} anos` : "-"} / {u.sexo || "-"}
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${
