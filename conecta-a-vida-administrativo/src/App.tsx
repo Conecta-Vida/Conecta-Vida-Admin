@@ -19,6 +19,7 @@ const EmailConfirmado = lazy(() => import("./pages/EmailConfirmado"));
 const Instituicoes = lazy(() => import("./pages/Instituicoes"));
 const Privacidade = lazy(() => import("./pages/Privacidade"));
 const ExcluirConta = lazy(() => import("./pages/ExcluirConta"));
+const Baixar = lazy(() => import("./pages/Baixar"));
 
 // Componente visual de carregamento
 const TelaCarregamento = () => (
@@ -60,6 +61,7 @@ function App() {
 
         {/* Páginas públicas exigidas pela Play Store e pela LGPD */}
         <Route path="/privacidade" element={<Suspense fallback={<TelaCarregamento />}><Privacidade /></Suspense>} />
+        <Route path="/baixar" element={<Suspense fallback={<TelaCarregamento />}><Baixar /></Suspense>} />
         <Route path="/excluir-conta" element={<Suspense fallback={<TelaCarregamento />}><ExcluirConta /></Suspense>} />
 
         {/* ROTAS PRIVADAS */}
