@@ -1,4 +1,6 @@
-// Edge Function "admin-usuarios": cria contas pelo painel administrativo.
+// Edge Function "admin-usuarios": cria contas pelo painel administrativo e
+// permite ao administrador definir uma nova senha para qualquer usuário
+// (corpo { acao: "definir_senha", usuario_id, senha }).
 //
 // Criar uma conta já confirmada exige a chave de serviço do Supabase, que
 // nunca pode ir para o navegador. Por isso o painel chama esta função, que:
@@ -51,6 +53,39 @@ Deno.serve(async (req: Request) => {
   } catch {
     return responder(400, { mensagem: "Corpo da requisição inválido." });
   }
+  // Administrador define a senha de outro usuário (ex.: quem esqueceu a senha
+  // e não recebe o e-mail de recuperação).
+  if (dados.acao === "definir_senha") {
+    const alvoId = Number(dados.usuario_id);
+    const novaSenha = String(dados.senha ?? "");
+    if (!Number.isInteger(alvoId)) return responder(400, { mensagem: "Usuário inválido." });
+    if (novaSenha.length < 6) return responder(400, { mensagem: "A senha precisa ter pelo menos 6 caracteres." });
+
+    const { data: alvo } = await admin.from("usuarios").select("id, nome, email, auth_id").eq("id", alvoId).maybeSingle();
+    if (!alvo) return responder(404, { mensagem: "Usuário não encontrado." });
+
+    if (alvo.auth_id) {
+      const { error } = await admin.auth.admin.updateUserById(alvo.auth_id, { password: novaSenha });
+      if (error) return responder(400, { mensagem: error.message });
+    } else {
+      // Conta antiga (API Java) ainda sem login no Supabase: cria o login.
+      const { error } = await admin.auth.admin.createUser({
+        email: String(alvo.email).toLowerCase(),
+        password: novaSenha,
+        email_confirm: true,
+        user_metadata: { nome: alvo.nome },
+        app_metadata: { conta_antiga_verificada: true },
+      });
+      if (error) return responder(400, { mensagem: error.message });
+    }
+
+    await admin.from("logs_atividade").insert({
+      usuario_id: solicitante.id,
+      acao: `Definiu nova senha para "${alvo.nome}"`.slice(0, 255),
+    });
+    return responder(200, { ok: true });
+  }
+
   const nome = String(dados.nome ?? "").trim();
   const email = String(dados.email ?? "").trim().toLowerCase();
   const senha = String(dados.senha ?? "");

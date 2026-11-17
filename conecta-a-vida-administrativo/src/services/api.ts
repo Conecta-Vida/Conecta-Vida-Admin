@@ -251,6 +251,20 @@ export const authService = {
 };
 
 export const usuarioService = {
+  /** Administrador define uma nova senha para outro usuário. */
+  definirSenha: async (usuarioId: number, senha: string): Promise<void> => {
+    const { error } = await supabase.functions.invoke('admin-usuarios', {
+      body: { acao: 'definir_senha', usuario_id: usuarioId, senha },
+    });
+    if (error) {
+      let mensagem = error.message;
+      try {
+        const corpo = await (error as { context?: Response }).context?.json();
+        if (corpo?.mensagem) mensagem = corpo.mensagem;
+      } catch { /* mantém a mensagem padrão */ }
+      throw new Error(mensagem);
+    }
+  },
   listarTodos: async (): Promise<Usuario[]> => {
     const { data, error } = await supabase.from('usuarios').select(COLUNAS_USUARIO).order('nome');
     if (error) falhar(error, 'Não foi possível listar os usuários');

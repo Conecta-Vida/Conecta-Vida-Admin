@@ -17,6 +17,8 @@ const Login = lazy(() => import("./pages/Login"));
 const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
 const EmailConfirmado = lazy(() => import("./pages/EmailConfirmado"));
 const Instituicoes = lazy(() => import("./pages/Instituicoes"));
+const Privacidade = lazy(() => import("./pages/Privacidade"));
+const ExcluirConta = lazy(() => import("./pages/ExcluirConta"));
 
 // Componente visual de carregamento
 const TelaCarregamento = () => (
@@ -55,6 +57,10 @@ function App() {
         <Route path="/redefinir-senha" element={<Suspense fallback={<TelaCarregamento />}><RedefinirSenha /></Suspense>} />
         {/* Aberta pelo link do e-mail de confirmação de cadastro do app */}
         <Route path="/email-confirmado" element={<Suspense fallback={<TelaCarregamento />}><EmailConfirmado /></Suspense>} />
+
+        {/* Páginas públicas exigidas pela Play Store e pela LGPD */}
+        <Route path="/privacidade" element={<Suspense fallback={<TelaCarregamento />}><Privacidade /></Suspense>} />
+        <Route path="/excluir-conta" element={<Suspense fallback={<TelaCarregamento />}><ExcluirConta /></Suspense>} />
 
         {/* ROTAS PRIVADAS */}
         <Route element={<RotaProtegida />}>
