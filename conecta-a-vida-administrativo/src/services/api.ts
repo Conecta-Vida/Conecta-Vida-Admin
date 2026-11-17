@@ -54,6 +54,8 @@ export interface Alerta {
   dataPostada?: string;
   /** Link da matéria original (notícias importadas). */
   fonteUrl?: string;
+  /** Instituição de saúde que publica (órgão, UBS, hospital...). */
+  instituicaoId?: number | null;
 }
 
 export interface Campanha {
@@ -68,6 +70,8 @@ export interface Campanha {
   dataFim: string;
   publicoAlvo?: string;
   status: string;
+  /** Instituição de saúde responsável pela campanha. */
+  instituicaoId?: number | null;
 }
 
 export interface InscritoCampanha {
@@ -434,6 +438,7 @@ const paraCampanha = (l: LinhaComunicacao): Campanha => ({
   dataFim: l.data_fim ?? '',
   publicoAlvo: l.publico_alvo ?? undefined,
   status: l.status ?? 'ATIVA',
+  instituicaoId: l.instituicao_id,
 });
 
 const campanhaParaBanco = (d: Partial<Campanha>) => ({
@@ -446,6 +451,7 @@ const campanhaParaBanco = (d: Partial<Campanha>) => ({
   ...(d.status !== undefined && { status: d.status }),
   ...(d.dataInicio !== undefined && { data_inicio: dataParaBanco(d.dataInicio) }),
   ...(d.dataFim !== undefined && { data_fim: dataParaBanco(d.dataFim) }),
+  ...(d.instituicaoId !== undefined && { instituicao_id: d.instituicaoId }),
 });
 
 export const campanhaService = {
@@ -523,6 +529,7 @@ const paraAlerta = (l: LinhaComunicacao): Alerta => ({
   lido: l.lido ?? false,
   dataPostada: l.data_postada ?? undefined,
   fonteUrl: l.fonte_url ?? undefined,
+  instituicaoId: l.instituicao_id,
 });
 
 const alertaParaBanco = (d: Partial<Alerta>) => ({
@@ -532,6 +539,7 @@ const alertaParaBanco = (d: Partial<Alerta>) => ({
   ...(d.localizacao !== undefined && { localizacao: vazioParaNulo(d.localizacao) }),
   ...(d.linkimagem !== undefined && { linkimagem: vazioParaNulo(d.linkimagem) }),
   ...(d.lido !== undefined && { lido: d.lido }),
+  ...(d.instituicaoId !== undefined && { instituicao_id: d.instituicaoId }),
 });
 
 /** Alertas e notícias têm os mesmos campos; só muda o tipo gravado. */

@@ -178,7 +178,7 @@ export default function Usuarios() {
                   <Label className="font-bold text-slate-700">Senha de Acesso</Label>
                   <Input name="senha" type="password" placeholder="Defina uma senha (Padrão: 123456)" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-1.5">
                     <Label className="font-bold text-slate-700">Ano de Nascimento</Label>
                     <Input name="dataNascimento" type="number" required placeholder="Ex: 2004" />
@@ -305,7 +305,7 @@ export default function Usuarios() {
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
               <div className="grid gap-1.5"><Label>Nome Completo</Label><Input name="nome" defaultValue={usuarioEditando.nome} required /></div>
               <div className="grid gap-1.5"><Label>E-mail</Label><Input name="email" type="email" defaultValue={usuarioEditando.email} required /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label>Ano de Nascimento</Label>
                   <Input name="dataNascimento" type="number" defaultValue={usuarioEditando.dataNascimento || ""} required />

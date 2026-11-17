@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import ImagemUpload from "../components/ImagemUpload";
+import SeletorInstituicao, { instituicaoDoFormulario, useInstituicoes } from "../components/SeletorInstituicao";
 import BotaoImportar from "../components/BotaoImportar";
 import { noticiaService, type Alerta } from "../services/api";
 
@@ -16,6 +17,7 @@ export default function Noticias() {
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [alertaEditando, setAlertaEditando] = useState<Alerta | null>(null);
+  const { porId: instituicoesPorId } = useInstituicoes();
   const [busca, setBusca] = useState("");
   const [abrangencia, setAbrangencia] = useState("Todas");
   const [situacao, setSituacao] = useState<"ativas" | "arquivadas">("ativas");
@@ -43,6 +45,7 @@ export default function Noticias() {
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
       linkimagem: (f.get("linkimagem") as string) || "",
+      instituicaoId: instituicaoDoFormulario(f),
       lido: false
     };
 
@@ -67,6 +70,7 @@ export default function Noticias() {
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
       linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
+      instituicaoId: instituicaoDoFormulario(f),
       lido: alertaEditando.lido
     };
 
@@ -131,9 +135,9 @@ export default function Noticias() {
             </Button>
           </DialogTrigger>
           {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl max-h-[90vh] overflow-y-auto">
             <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2">
-              <Radio className="w-5 h-5 text-blue-500" /> Lançar Transmissão de Emergência
+              <Radio className="w-5 h-5 text-blue-500" /> Publicar notícia
             </DialogTitle>
             <form onSubmit={handleCadastro} className="space-y-4 pt-4">
               <div className="grid gap-1.5">
@@ -141,12 +145,12 @@ export default function Noticias() {
                 <Input name="titulo" required placeholder="Ex: Nova UBS inaugurada no centro" />
               </div>
               <div className="grid gap-1.5">
-                <Label className="font-bold text-slate-700">Instruções de Contingência para a População</Label>
+                <Label className="font-bold text-slate-700">Texto da notícia</Label>
                 <textarea name="descricao" required rows={3} placeholder="Escreva o texto da notícia que os cidadãos verão no smartphone..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
-                  <Label className="font-bold text-slate-700">Grau de Risco (Gatilho Push)</Label>
+                  <Label className="font-bold text-slate-700">Categoria</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
                     <option value="Informativo">Informativo</option>
                     <option value="Vacinação">Vacinação</option>
@@ -155,10 +159,11 @@ export default function Noticias() {
                   </select>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="font-bold text-slate-700">Foco Geográfico (Cidade/Bairro)</Label>
-                  <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
+                  <Label className="font-bold text-slate-700">Abrangência (cidade, "Estado de SP" ou "Brasil")</Label>
+                  <Input name="localizacao" required placeholder="Ex: Bragança Paulista" />
                 </div>
               </div>
+              <SeletorInstituicao />
               <ImagemUpload />
               <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
                 Publicar Notícia no Aplicativo
@@ -204,6 +209,9 @@ export default function Noticias() {
                     <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {a.categoria || "Informativo"}</span>
                   </div>
                   <h3 className="font-black text-base text-slate-900 leading-snug line-clamp-3">{a.titulo}</h3>
+                  {a.instituicaoId && instituicoesPorId.get(a.instituicaoId) && (
+                    <p className="text-[11px] font-semibold text-slate-400">Por {instituicoesPorId.get(a.instituicaoId)!.nome}</p>
+                  )}
                 </div>
 
                 <DropdownMenu>
@@ -256,7 +264,7 @@ export default function Noticias() {
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
         {/* 🟢 ADICIONADO: aria-describedby={undefined} */}
-        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[550px] p-6 bg-white rounded-xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3">Editar Notícia</DialogTitle>
           {alertaEditando && (
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
@@ -268,7 +276,7 @@ export default function Noticias() {
                 <Label className="font-bold text-slate-700">Texto da notícia</Label>
                 <textarea name="descricao" defaultValue={alertaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Categoria</Label>
                   <select name="categoria" defaultValue={alertaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -283,7 +291,8 @@ export default function Noticias() {
                   <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
                 </div>
               </div>
-                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
+                <SeletorInstituicao defaultValue={alertaEditando.instituicaoId} />
+              <ImagemUpload defaultValue={alertaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 font-bold text-white h-11 shadow mt-4">
                 Salvar alterações
               </Button>

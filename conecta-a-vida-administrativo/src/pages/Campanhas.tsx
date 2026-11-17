@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Megaphone, Calendar, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
 import ImagemUpload from "../components/ImagemUpload";
+import SeletorInstituicao, { instituicaoDoFormulario, useInstituicoes } from "../components/SeletorInstituicao";
 import { campanhaService, type Campanha } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 export default function Campanhas() {
+  const { porId: instituicoesPorId } = useInstituicoes();
   const [campanhas, setCampanhas] = useState<Campanha[]>([]);
   const [inscritos, setInscritos] = useState<Record<number, number>>({});
   const [openCadastro, setOpenCadastro] = useState(false);
@@ -48,7 +50,8 @@ export default function Campanhas() {
       status: f.get("status") as string, 
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
-      linkimagem: (f.get("linkimagem") as string) || ""
+      linkimagem: (f.get("linkimagem") as string) || "",
+      instituicaoId: instituicaoDoFormulario(f),
     };
 
     try {
@@ -75,7 +78,8 @@ export default function Campanhas() {
       status: f.get("status") as string,
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
-      linkimagem: (f.get("linkimagem") as string) ?? campanhaEditando.linkimagem
+      linkimagem: (f.get("linkimagem") as string) ?? campanhaEditando.linkimagem,
+      instituicaoId: instituicaoDoFormulario(f),
     };
 
     try {
@@ -125,7 +129,7 @@ export default function Campanhas() {
                 <Label className="font-bold text-slate-700">Descrição / Instruções aos Cidadãos</Label>
                 <textarea name="descricao" required rows={3} placeholder="Instruções completas sobre o mutirão de saúde..." className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-medium" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" required className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -143,7 +147,7 @@ export default function Campanhas() {
                   <Input name="publicoAlvo" required placeholder="Ex: População Geral, Idosos" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Local de Atendimento</Label><Input name="localizacao" required placeholder="Ex: UBS Central" /></div>
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Estado Inicial</Label>
@@ -153,10 +157,11 @@ export default function Campanhas() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Previsão de Término</Label><Input name="dataFim" type="datetime-local" required /></div>
               </div>
+              <SeletorInstituicao />
               <ImagemUpload />
               <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4 border-none hover:bg-blue-700">
                 Publicar Campanha e Sincronizar Mobile
@@ -178,6 +183,9 @@ export default function Campanhas() {
                     <span>•</span>
                     <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Alvo: {c.publicoAlvo}</span>
                   </div>
+                  {c.instituicaoId && instituicoesPorId.get(c.instituicaoId) && (
+                    <p className="text-xs font-semibold text-slate-400">Responsável: {instituicoesPorId.get(c.instituicaoId)!.nome}</p>
+                  )}
                 </div>
 
                 <DropdownMenu>
@@ -235,7 +243,7 @@ export default function Campanhas() {
             <form onSubmit={handleUpdate} className="space-y-4 pt-4">
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Título da Ação</Label><Input name="titulo" defaultValue={campanhaEditando.titulo} required /></div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Descrição / Instruções</Label><textarea name="descricao" defaultValue={campanhaEditando.descricao} required rows={3} className="w-full border rounded-md p-2.5 text-sm border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-medium" /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Foco Temático</Label>
                   <select name="categoria" defaultValue={campanhaEditando.categoria} className="h-10 w-full border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -250,7 +258,7 @@ export default function Campanhas() {
                 </div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Público-Alvo</Label><Input name="publicoAlvo" defaultValue={campanhaEditando.publicoAlvo} required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Local de Atendimento</Label><Input name="localizacao" defaultValue={campanhaEditando.localizacao} required /></div>
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Estado da Campanha</Label>
@@ -260,10 +268,11 @@ export default function Campanhas() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" defaultValue={campanhaEditando.dataInicio ? campanhaEditando.dataInicio.substring(0, 16) : ""} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Fim</Label><Input name="dataFim" type="datetime-local" defaultValue={campanhaEditando.dataFim ? campanhaEditando.dataFim.substring(0, 16) : ""} required /></div>
               </div>
+              <SeletorInstituicao defaultValue={campanhaEditando.instituicaoId} />
               <ImagemUpload defaultValue={campanhaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4 border-none hover:bg-amber-600">
                 Salvar Alterações

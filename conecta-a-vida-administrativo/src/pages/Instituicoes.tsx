@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import BotaoImportar from "../components/BotaoImportar";
+import { carregarInstituicoes as atualizarListaDosFormularios } from "../components/SeletorInstituicao";
 
 export default function Instituicoes() {
   const [instituicoes, setInstituicoes] = useState<InstituicaoSaude[]>([]);
@@ -25,6 +26,8 @@ export default function Instituicoes() {
     try {
       const dados = await instituicaoService.listarTodas();
       setInstituicoes(dados);
+      // Os formulários de notícia/campanha/alerta passam a ver as mudanças.
+      atualizarListaDosFormularios(true).catch(() => {});
       const codigos = [...new Set(dados.map((i) => i.codigoMunicipio).filter((c): c is number => !!c))];
       setMunicipios(await instituicaoService.municipios(codigos));
       // Sem unidades de Bragança Paulista, começa mostrando todas.
@@ -148,8 +151,8 @@ export default function Instituicoes() {
               <Plus className="w-5 h-5 text-blue-600" /> Cadastrar Ponto de Atendimento Médico
             </DialogTitle>
             <form onSubmit={handleCadastro} className="space-y-4 pt-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-1 grid gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Tipo</Label>
                   <select name="tipoInstituicao" required className="h-10 border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
                     <option value="UBS">UBS</option>
@@ -163,18 +166,18 @@ export default function Instituicoes() {
                     <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
-                <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
+                <div className="sm:col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Endereço Completo</Label><Input name="endereco" placeholder="Rua, Número, Bairro - Cidade/SP" /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Telefone de Contato</Label><Input name="telefone" required placeholder="(11) 4003-0000" /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">E-mail Institucional</Label><Input name="email" type="email" placeholder="unidade@saude.gov.br" /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Link do Website Oficial (linksite)</Label><Input name="linksite" placeholder="https://saude.com.br" /></div>
               <div className="grid gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Segunda a Sexta</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" placeholder="Ex: 07:00 às 19:00" /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" placeholder="Ex: 08:00 às 12:00" /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" placeholder="Ex: Fechado" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Segunda a Sexta</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" placeholder="Ex: 07:00 às 19:00" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" placeholder="Ex: 08:00 às 12:00" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" placeholder="Ex: Fechado" /></div>
               </div>
               <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-2 hover:bg-blue-700 border-none">Registar Unidade no Banco</Button>
             </form>
@@ -257,7 +260,7 @@ export default function Instituicoes() {
           <DialogTitle className="text-xl font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Edit2 className="w-5 h-5 text-amber-500" /> Atualizar Unidade de Saúde</DialogTitle>
           {instituicaoEditando && (
             <form onSubmit={handleEdicao} className="space-y-4 pt-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="font-bold text-slate-700">Tipo</Label>
                   <select name="tipoInstituicao" defaultValue={instituicaoEditando.tipoInstituicao} className="h-10 border rounded-md px-3 bg-white text-sm font-semibold border-slate-200">
@@ -272,10 +275,10 @@ export default function Instituicoes() {
                     <option value="Secretaria Municipal">Secretaria Municipal</option>
                   </select>
                 </div>
-                <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>
+                <div className="sm:col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>
               </div>
               <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Endereço</Label><Input name="endereco" defaultValue={instituicaoEditando.endereco || ""} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Telefone</Label><Input name="telefone" defaultValue={instituicaoEditando.telefone} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">E-mail</Label><Input name="email" type="email" defaultValue={instituicaoEditando.email || ""} /></div>
               </div>
@@ -287,9 +290,9 @@ export default function Instituicoes() {
               </div>
 
               <div className="grid gap-3 bg-amber-50/40 p-3 rounded-lg border border-amber-100">
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Seg a Sex</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" defaultValue={instituicaoEditando.horarioSegSex || ""} /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" defaultValue={instituicaoEditando.horarioSabado || ""} /></div>
-                <div className="grid grid-cols-3 items-center gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" defaultValue={instituicaoEditando.horarioDomingo || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Seg a Sex</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSegSex" defaultValue={instituicaoEditando.horarioSegSex || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Sábado</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioSabado" defaultValue={instituicaoEditando.horarioSabado || ""} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-1 sm:gap-2"><Label className="font-bold text-xs text-slate-600">Domingo</Label><Input className="sm:col-span-2 bg-white h-8 text-xs font-semibold" name="horarioDomingo" defaultValue={instituicaoEditando.horarioDomingo || ""} /></div>
               </div>
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-2 border-none">Salvar Alterações Cadastrais</Button>
             </form>
