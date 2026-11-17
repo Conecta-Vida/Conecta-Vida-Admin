@@ -187,6 +187,11 @@ export default function Alertas() {
                 </DropdownMenu>
               </div>
 
+              {a.fonteUrl?.includes("info.dengue.mat.br") && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                  Automático · InfoDengue (Fiocruz/FGV)
+                </span>
+              )}
               <p className="text-sm text-slate-600 font-medium leading-relaxed">{a.descricao}</p>
 
               <div className="flex items-center justify-between border-t pt-4 mt-2">
@@ -203,7 +208,7 @@ export default function Alertas() {
 
         {alertas.length === 0 && (
           <div className="col-span-2 text-center py-12 text-slate-400 font-medium italic bg-white border rounded-xl shadow-sm">
-            Nenhum alerta ativo no momento. Use "Emitir Alerta" para avisar a população sobre um surto ou emergência.
+            Nenhum alerta ativo no momento. Alertas de dengue, chikungunya e zika são publicados automaticamente quando o InfoDengue indicar nível laranja ou vermelho nas cidades dos usuários; use "Emitir Alerta" para outros avisos.
           </div>
         )}
       </div>
