@@ -4,6 +4,20 @@ Painel web usado pelos gestores de saúde para publicar notícias, campanhas e a
 
 **IFSP — Câmpus Bragança Paulista** · Tecnologia em Análise e Desenvolvimento de Sistemas
 
+<p align="center">
+  <a href="https://youtu.be/gKQ8_JRuKwk" title="Clique para assistir à demonstração">
+    <img src="https://img.shields.io/badge/Assista%20à%20Demonstração-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Assista à Demonstração">
+  </a>
+</p>
+
+## Autores e Instituição
+
+* **Luiz Henrique Gonçalves**
+* **Gustavo**
+* **Gabriel**
+* **Renan**
+* **Maycon**
+
 ## Arquitetura
 
 ```
