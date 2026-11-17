@@ -8,6 +8,10 @@
 //   alvo "imagens":  busca a imagem de capa das notícias importadas sem imagem.
 //   alvo "unidades": unidades de saúde de Bragança Paulista no CNES
 //                    (dados abertos do Ministério da Saúde).
+//   alvo "alertas":  nível de alerta semanal de dengue, chikungunya e zika do
+//                    InfoDengue (Fiocruz/FGV) nas cidades dos usuários. Nível
+//                    laranja (3) ou vermelho (4) vira ALERTA no app; quando o
+//                    nível baixa, o alerta é arquivado.
 //
 // Nada é apagado: só entram registros novos (ou dados reais de uma unidade
 // que já existia com o mesmo nome). É chamada pelo agendador do banco
@@ -350,6 +354,106 @@ async function importarUnidades(db: SupabaseClient) {
   return { encontradas: validas.length, novas, atualizadas, falhas };
 }
 
+
+// --------------------------------------------------- alertas (InfoDengue)
+const DOENCAS: Record<string, string> = { dengue: "Dengue", chikungunya: "Chikungunya", zika: "Zika" };
+const NIVEIS: Record<number, string> = { 3: "laranja", 4: "vermelho" };
+
+/** Semana epidemiológica aproximada (domingo a sábado) de uma data. */
+function semanaEpidemiologica(d: Date) {
+  const inicioAno = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const primeiroDomingo = new Date(inicioAno.getTime() - inicioAno.getUTCDay() * 86400_000);
+  const se = Math.floor((d.getTime() - primeiroDomingo.getTime()) / (7 * 86400_000)) + 1;
+  return { ano: d.getUTCFullYear(), se: Math.min(Math.max(se, 1), 53) };
+}
+
+/** Cidades a acompanhar: Bragança Paulista e as cidades informadas pelos usuários. */
+async function cidadesMonitoradas(db: SupabaseClient) {
+  const { data: perfis } = await db.from("usuarios").select("localizacao").not("localizacao", "is", null);
+  const nomes = new Set<string>(["braganca paulista"]);
+  for (const p of perfis ?? []) {
+    const n = semAcento(String(p.localizacao ?? ""));
+    if (n && !["nao informado", "nao disponivel", "geral"].includes(n)) nomes.add(n);
+  }
+  const { data: municipios } = await db.from("municipios_ibge").select("codigo, nome, uf, nome_busca").in("nome_busca", [...nomes]);
+  // Mesmo nome em mais de um estado: prefere SP (origem do projeto).
+  const porNome = new Map<string, { codigo: number; nome: string; uf: string }>();
+  for (const m of municipios ?? []) {
+    const atual = porNome.get(m.nome_busca);
+    if (!atual || m.uf === "SP") porNome.set(m.nome_busca, m);
+  }
+  return [...porNome.values()].slice(0, 60);
+}
+
+async function importarAlertas(db: SupabaseClient, nivelMinimo = 3) {
+  const cidades = await cidadesMonitoradas(db);
+  const hoje = new Date();
+  const fim = semanaEpidemiologica(hoje);
+  const ini = semanaEpidemiologica(new Date(hoje.getTime() - 28 * 86400_000));
+  const orgaoId = await orgao(db, "InfoDengue (Fiocruz / FGV)", {
+    tipo_instituicao: "Órgão Federal", telefone: "136",
+    linksite: "https://info.dengue.mat.br", endereco: "Rio de Janeiro - RJ",
+  });
+
+  let publicados = 0, arquivados = 0;
+  const falhas: string[] = [];
+  const situacao: string[] = [];
+  for (const cidade of cidades) {
+    for (const [doenca, nomeDoenca] of Object.entries(DOENCAS)) {
+      try {
+        const url = `https://info.dengue.mat.br/api/alertcity?geocode=${cidade.codigo}&disease=${doenca}&format=json` +
+          `&ew_start=${ini.ano === fim.ano ? ini.se : 1}&ew_end=${fim.se}&ey_start=${fim.ano}&ey_end=${fim.ano}`;
+        const r = await fetch(url, { headers: NAVEGADOR, signal: AbortSignal.timeout(20000) });
+        if (!r.ok) { falhas.push(`${cidade.nome}/${doenca}: HTTP ${r.status}`); continue; }
+        const semanas = (await r.json()) as Record<string, any>[];
+        if (!Array.isArray(semanas) || semanas.length === 0) continue;
+        const ultima = semanas.reduce((a, b) => (Number(b.SE) > Number(a.SE) ? b : a));
+        const nivel = Number(ultima.nivel);
+        situacao.push(`${cidade.nome}/${doenca}: nível ${nivel}`);
+        const prefixo = `https://info.dengue.mat.br/alerta/${cidade.codigo}/${doenca}`;
+
+        if (nivel >= nivelMinimo) {
+          const se = String(ultima.SE);
+          const casos = Math.round(Number(ultima.casos_est ?? ultima.casos ?? 0));
+          const incidencia = Number(ultima.p_inc100k ?? 0).toFixed(1).replace(".", ",");
+          const linha = {
+            tipo: "ALERTA",
+            titulo: cortar(`Alerta ${NIVEIS[nivel] ?? ""} de ${nomeDoenca} em ${cidade.nome}`, 150),
+            descricao:
+              `O InfoDengue (Fiocruz/FGV) classificou ${cidade.nome} - ${cidade.uf} em nível ${NIVEIS[nivel] ?? nivel} ` +
+              `para ${nomeDoenca} na semana epidemiológica ${se.slice(4)}/${se.slice(0, 4)}: cerca de ${casos} casos estimados ` +
+              `(${incidencia} por 100 mil habitantes). Elimine água parada em vasos, pneus, calhas e garrafas, use repelente e ` +
+              `procure uma unidade de saúde em caso de febre, dor no corpo ou manchas na pele.`,
+            categoria: "Epidemia",
+            localizacao: cidade.nome,
+            publico_alvo: "População Geral",
+            status: "ATIVO",
+            lido: false,
+            instituicao_id: orgaoId,
+            fonte_url: `${prefixo}?se=${se}`,
+          };
+          const { data: novo, error } = await db.from("comunicacoes")
+            .upsert(linha, { onConflict: "fonte_url", ignoreDuplicates: true }).select("id");
+          if (error) falhas.push(`${cidade.nome}/${doenca}: ${error.message}`);
+          else if ((novo ?? []).length > 0) publicados++;
+          // Alertas de semanas anteriores da mesma cidade e doença saem do app.
+          const { data: antigos } = await db.from("comunicacoes").update({ status: "ARQUIVADO" })
+            .like("fonte_url", `${prefixo}?se=%`).neq("fonte_url", linha.fonte_url).neq("status", "ARQUIVADO").select("id");
+          arquivados += (antigos ?? []).length;
+        } else {
+          // Nível voltou a verde/amarelo: arquiva os alertas automáticos dessa cidade e doença.
+          const { data: antigos } = await db.from("comunicacoes").update({ status: "ARQUIVADO" })
+            .like("fonte_url", `${prefixo}?se=%`).neq("status", "ARQUIVADO").select("id");
+          arquivados += (antigos ?? []).length;
+        }
+      } catch (e) {
+        falhas.push(`${cidade.nome}/${doenca}: ${(e as Error).message}`);
+      }
+    }
+  }
+  return { cidades: cidades.length, publicados, arquivados, situacao, falhas };
+}
+
 // ------------------------------------------------------------ entrada
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -379,7 +483,13 @@ Deno.serve(async (req: Request) => {
   if (!autorizado) return responder(403, { mensagem: "Apenas administradores podem importar dados." });
 
   let alvo = "noticias";
-  try { alvo = String((await req.json()).alvo ?? "noticias"); } catch { /* corpo vazio: padrão */ }
+  let nivelMinimo = 3;
+  try {
+    const corpo = await req.json();
+    alvo = String(corpo.alvo ?? "noticias");
+    // Só para teste manual: permite simular com um nível mais baixo.
+    if (Number.isInteger(corpo.nivel_minimo)) nivelMinimo = Math.min(Math.max(corpo.nivel_minimo, 1), 4);
+  } catch { /* corpo vazio: padrão */ }
 
   try {
     const resultado: Record<string, unknown> = {};
@@ -389,7 +499,8 @@ Deno.serve(async (req: Request) => {
     }
     if (alvo === "imagens") resultado.imagens = await completarImagens(db);
     if (alvo === "unidades" || alvo === "tudo") resultado.unidades = await importarUnidades(db);
-    if (Object.keys(resultado).length === 0) return responder(400, { mensagem: 'Informe alvo "noticias", "unidades", "imagens" ou "tudo".' });
+    if (alvo === "alertas" || alvo === "tudo") resultado.alertas = await importarAlertas(db, nivelMinimo);
+    if (Object.keys(resultado).length === 0) return responder(400, { mensagem: 'Informe alvo "noticias", "unidades", "imagens", "alertas" ou "tudo".' });
 
     if (autor) {
       await db.from("logs_atividade").insert({ usuario_id: autor, acao: `Importou dados oficiais (${alvo})` });
