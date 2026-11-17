@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import BotaoImportar from "../components/BotaoImportar";
 
 export default function Instituicoes() {
   const [instituicoes, setInstituicoes] = useState<InstituicaoSaude[]>([]);
@@ -19,8 +20,8 @@ export default function Instituicoes() {
     try {
       const dados = await instituicaoService.listarTodas();
       setInstituicoes(dados);
-    } catch {
-      toast.error("Erro ao sincronizar mapa de unidades de saúde.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao sincronizar mapa de unidades de saúde.");
     }
   };
 
@@ -49,8 +50,8 @@ export default function Instituicoes() {
       toast.success("Unidade de saúde integrada com sucesso!");
       setOpenCadastro(false);
       carregarInstituicoes();
-    } catch {
-      toast.error("Falha ao registar a nova instituição.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao registar a nova instituição.");
     }
   };
 
@@ -77,8 +78,8 @@ export default function Instituicoes() {
       setOpenEdicao(false);
       setInstituicaoEditando(null);
       carregarInstituicoes();
-    } catch {
-      toast.error("Erro ao aplicar as alterações cadastrais.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao aplicar as alterações cadastrais.");
     }
   };
 
@@ -88,8 +89,8 @@ export default function Instituicoes() {
       await instituicaoService.deletar(id);
       toast.success("Unidade de saúde removida do ecossistema.");
       carregarInstituicoes();
-    } catch {
-      toast.error("Não foi possível excluir a instituição selecionada.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível excluir a instituição selecionada.");
     }
   };
 
@@ -103,6 +104,8 @@ export default function Instituicoes() {
           <p className="text-slate-400 text-xs font-bold mt-1">Gestão de infraestrutura médica, postos de vacinação e hospitais parceiros.</p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+        <BotaoImportar alvo="unidades" rotulo="Importar do CNES" aoConcluir={carregarInstituicoes} />
         <Dialog open={openCadastro} onOpenChange={setOpenCadastro}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 font-bold hover:bg-blue-700 shadow-sm gap-1 text-white border-none">
@@ -121,6 +124,10 @@ export default function Instituicoes() {
                     <option value="UBS">UBS</option>
                     <option value="Hospital">Hospital</option>
                     <option value="Hemocentro">Hemocentro</option>
+                    <option value="UPA">UPA</option>
+                    <option value="CAPS">CAPS</option>
+                    <option value="SAMU">SAMU</option>
+                    <option value="Órgão Federal">Órgão Federal</option>
                   </select>
                 </div>
                 <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial da Unidade</Label><Input name="nome" required placeholder="Ex: UBS Central Bragança" /></div>
@@ -140,6 +147,7 @@ export default function Instituicoes() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -171,8 +179,8 @@ export default function Instituicoes() {
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[11px] space-y-1 font-bold text-slate-500">
                 <div className="flex justify-between"><span>Seg a Sex:</span><span className="text-slate-700">{inst.horarioSegSex || "-"}</span></div>
-                <div className="flex justify-between"><span>Sábado:</span><span className="text-slate-700">{inst.horarioSabado || "Fechado"}</span></div>
-                <div className="flex justify-between"><span>Domingo:</span><span className="text-slate-700">{inst.horarioDomingo || "Fechado"}</span></div>
+                <div className="flex justify-between"><span>Sábado:</span><span className="text-slate-700">{inst.horarioSabado || "Não informado"}</span></div>
+                <div className="flex justify-between"><span>Domingo:</span><span className="text-slate-700">{inst.horarioDomingo || "Não informado"}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -191,6 +199,10 @@ export default function Instituicoes() {
                     <option value="UBS">UBS</option>
                     <option value="Hospital">Hospital</option>
                     <option value="Hemocentro">Hemocentro</option>
+                    <option value="UPA">UPA</option>
+                    <option value="CAPS">CAPS</option>
+                    <option value="SAMU">SAMU</option>
+                    <option value="Órgão Federal">Órgão Federal</option>
                   </select>
                 </div>
                 <div className="col-span-2 grid gap-1.5"><Label className="font-bold text-slate-700">Nome Oficial</Label><Input name="nome" defaultValue={instituicaoEditando.nome} required /></div>

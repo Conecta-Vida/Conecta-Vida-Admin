@@ -9,8 +9,12 @@ import {
   LogOut,
   HeartPulse,
   Menu,
-  X
+  X,
+  Newspaper,
+  HeartHandshake,
 } from "lucide-react";
+import { authService } from "../services/api";
+import { AlterarSenha } from "./AlterarSenha";
 
 export default function AppLayout() {
   const location = useLocation();
@@ -18,8 +22,10 @@ export default function AppLayout() {
   const [menuCelularAberto, setMenuCelularAberto] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("@conecta:admin");
-    window.location.href = "/login";
+    // Encerra a sessão no Supabase antes de voltar para o login.
+    authService.logout().finally(() => {
+      window.location.href = "/login";
+    });
   };
 
   const menuItens = [
@@ -28,6 +34,8 @@ export default function AppLayout() {
     { caminho: "/instituicoes", label: "Unidades de Saúde", icone: Building2 },
     { caminho: "/campanhas", label: "Campanhas", icone: Megaphone },
     { caminho: "/alertas", label: "Gestão de Alertas", icone: AlertTriangle },
+    { caminho: "/noticias", label: "Notícias", icone: Newspaper },
+    { caminho: "/dependentes", label: "Dependentes", icone: HeartHandshake },
   ];
 
   return (
@@ -88,7 +96,8 @@ export default function AppLayout() {
         </nav>
 
         {/* RODAPÉ DO MENU */}
-        <div className="border-t border-slate-100 p-4">
+        <div className="border-t border-slate-100 p-4 space-y-1">
+          <AlterarSenha />
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50"

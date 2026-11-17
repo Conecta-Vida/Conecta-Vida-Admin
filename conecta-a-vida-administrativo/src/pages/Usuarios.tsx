@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Users, FileText, Download, Upload, Plus, MoreHorizontal, Edit2, Trash2, UserCheck } from "lucide-react";
+import { Users, FileText, Download, Upload, Plus, MoreHorizontal, Edit2, Trash2, UserCheck, KeyRound } from "lucide-react";
 import { type Usuario, usuarioService, relatorioService } from "../services/api";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,13 +16,36 @@ export default function Usuarios() {
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEdicao, setOpenEdicao] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null);
+  const [usuarioSenha, setUsuarioSenha] = useState<Usuario | null>(null);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+
+  const handleDefinirSenha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usuarioSenha?.id) return;
+    if (novaSenha.length < 6) {
+      toast.warning("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    setSalvandoSenha(true);
+    try {
+      await usuarioService.definirSenha(usuarioSenha.id, novaSenha);
+      toast.success(`Nova senha definida para ${usuarioSenha.nome}. Passe a senha para a pessoa por um canal privado.`);
+      setUsuarioSenha(null);
+      setNovaSenha("");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível alterar a senha.");
+    } finally {
+      setSalvandoSenha(false);
+    }
+  };
 
   const carregarUsuarios = async () => {
     try {
       const dados = await usuarioService.listarTodos();
       setUsuarios(dados);
-    } catch {
-      toast.error("Erro ao carregar a lista de cidadãos.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao carregar a lista de cidadãos.");
     }
   };
 
@@ -58,8 +81,8 @@ export default function Usuarios() {
       toast.success("Registro criado com sucesso!");
       setOpenCadastro(false);
       carregarUsuarios();
-    } catch {
-      toast.error("Falha ao salvar o novo registro.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao salvar o novo registro.");
     }
   };
 
@@ -82,8 +105,8 @@ export default function Usuarios() {
       toast.success("Dados atualizados com sucesso!");
       setOpenEdicao(false);
       carregarUsuarios();
-    } catch {
-      toast.error("Erro na atualização dos dados.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro na atualização dos dados.");
     }
   };
 
@@ -93,8 +116,8 @@ export default function Usuarios() {
       await usuarioService.deletar(id);
       toast.success("Registro removido.");
       carregarUsuarios();
-    } catch {
-      toast.error("Não foi possível deletar o usuário.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível deletar o usuário.");
     }
   };
 
@@ -119,11 +142,11 @@ export default function Usuarios() {
         </h1>
         
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => window.open(relatorioService.getUrlDownloadPdf(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
+          <Button variant="outline" onClick={() => relatorioService.imprimirUsuarios().catch((e) => toast.error(e.message))} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <FileText className="w-4 h-4 text-red-500" /> Exportar PDF
           </Button>
           
-          <Button variant="outline" onClick={() => window.open(relatorioService.getUrlExportarCsv(), '_blank')} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
+          <Button variant="outline" onClick={() => relatorioService.exportarUsuariosCsv().catch((e) => toast.error(e.message))} className="font-bold text-slate-700 gap-1.5 border-slate-200 bg-white">
             <Download className="w-4 h-4 text-emerald-600" /> Exportar CSV
           </Button>
 
@@ -226,9 +249,12 @@ export default function Usuarios() {
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-32 border bg-white shadow-md rounded-lg">
+                    <DropdownMenuContent align="end" className="w-40 border bg-white shadow-md rounded-lg">
                       <DropdownMenuItem onClick={() => { setUsuarioEditando(u); setOpenEdicao(true); }} className="gap-2 cursor-pointer font-bold text-xs text-amber-600">
                         <Edit2 className="w-3.5 h-3.5" /> Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setNovaSenha(""); setUsuarioSenha(u); }} className="gap-2 cursor-pointer font-bold text-xs text-blue-600">
+                        <KeyRound className="w-3.5 h-3.5" /> Definir senha
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => u.id && handleDeletar(u.id)} className="gap-2 cursor-pointer font-bold text-xs text-red-600">
                         <Trash2 className="w-3.5 h-3.5" /> Excluir
@@ -248,6 +274,29 @@ export default function Usuarios() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Definir senha de outro usuário */}
+      <Dialog open={!!usuarioSenha} onOpenChange={(aberto) => { if (!aberto) setUsuarioSenha(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Definir nova senha</DialogTitle>
+          <p className="text-sm text-slate-500">
+            Para <strong>{usuarioSenha?.nome}</strong> ({usuarioSenha?.email}). A senha antiga deixa de funcionar.
+          </p>
+          <form onSubmit={handleDefinirSenha} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="senha-usuario">Nova senha</Label>
+              <Input id="senha-usuario" type="text" autoComplete="off" value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)} placeholder="Mínimo de 6 caracteres" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setUsuarioSenha(null)}>Cancelar</Button>
+              <Button type="submit" disabled={salvandoSenha} className="bg-blue-600 hover:bg-blue-700">
+                {salvandoSenha ? "Salvando..." : "Salvar senha"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={openEdicao} onOpenChange={setOpenEdicao}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-[500px] p-6 bg-white rounded-xl">

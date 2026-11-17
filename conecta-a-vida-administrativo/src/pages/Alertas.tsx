@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import ImagemUpload from "../components/ImagemUpload";
 import { alertaService, type Alerta } from "../services/api";
 
 export default function Alertas() {
@@ -19,8 +20,8 @@ export default function Alertas() {
     try {
       const dados = await alertaService.listarTodos();
       setAlertas(dados);
-    } catch {
-      toast.error("Falha ao sincronizar alertas com a API unificada.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao sincronizar alertas com a API unificada.");
     }
   };
 
@@ -37,6 +38,7 @@ export default function Alertas() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) || "",
       lido: false
     };
 
@@ -45,8 +47,8 @@ export default function Alertas() {
       toast.success("Alerta emergencial emitido e enviado para os dispositivos móveis!");
       setOpenCadastro(false);
       carregarAlertas();
-    } catch {
-      toast.error("Erro ao publicar o alerta no Supabase.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao publicar o alerta no Supabase.");
     }
   };
 
@@ -60,6 +62,7 @@ export default function Alertas() {
       descricao: f.get("descricao") as string,
       categoria: f.get("categoria") as string,
       localizacao: f.get("localizacao") as string,
+      linkimagem: (f.get("linkimagem") as string) ?? alertaEditando.linkimagem,
       lido: alertaEditando.lido
     };
 
@@ -68,8 +71,8 @@ export default function Alertas() {
       toast.success("Parâmetros do alerta modificados.");
       setOpenEdicao(false);
       carregarAlertas();
-    } catch {
-      toast.error("Erro ao atualizar o registro no banco de dados.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Erro ao atualizar o registro no banco de dados.");
     }
   };
 
@@ -78,8 +81,8 @@ export default function Alertas() {
       await alertaService.marcarComoLido(id);
       toast.success("Alerta arquivado e removido do painel ativo.");
       carregarAlertas();
-    } catch {
-      toast.error("Falha ao atualizar o estado do alerta.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao atualizar o estado do alerta.");
     }
   };
 
@@ -89,8 +92,8 @@ export default function Alertas() {
       await alertaService.deletar(id);
       toast.success("Registro removido com sucesso.");
       carregarAlertas();
-    } catch {
-      toast.error("Falha ao deletar a publicação polimórfica.");
+    } catch (err) {
+      toast.error((err as Error)?.message || "Falha ao deletar a publicação polimórfica.");
     }
   };
 
@@ -135,6 +138,7 @@ export default function Alertas() {
                   <Input name="localizacao" required placeholder="Ex: Zona Norte / Geral" />
                 </div>
               </div>
+              <ImagemUpload />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Disparar Alerta para o Banco e Mobile
               </Button>
@@ -228,6 +232,7 @@ export default function Alertas() {
                   <Input name="localizacao" defaultValue={alertaEditando.localizacao} required />
                 </div>
               </div>
+                <ImagemUpload defaultValue={alertaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 font-bold text-white h-11 shadow mt-4">
                 Salvar Alterações Técnico-Operacionais
               </Button>
