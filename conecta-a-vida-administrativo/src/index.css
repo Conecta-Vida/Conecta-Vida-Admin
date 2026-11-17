@@ -51,3 +51,32 @@
 .table-container {
   @apply rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden;
 }
+/* Campos de seleção iguais em todos os navegadores (Chrome, Safari, Samsung
+   Internet, Firefox, modo escuro do celular): altura mínima garantida, fundo
+   claro, seta própria e contorno azul no foco — sem o traço preto do navegador. */
+@layer base {
+  :root { color-scheme: light; }
+
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 2.5rem;
+    line-height: 1.25rem;
+    padding-right: 2.25rem !important;
+    background-color: #fff;
+    color: #0f172a;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    cursor: pointer;
+  }
+
+  select:focus,
+  select:focus-visible {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2);
+  }
+}
