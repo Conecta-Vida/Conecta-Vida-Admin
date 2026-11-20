@@ -15,7 +15,7 @@ RN06 - Cada titular tem no máximo 10 dependentes não revogados (limite de
 """
 import pytest
 
-from conftest import ErroSql, criar_campanha, inscrever, total_inscricoes
+from conftest import COM_CORRECAO, ErroSql, criar_campanha, inscrever, total_inscricoes
 
 RLS = "row-level security"
 
@@ -33,13 +33,30 @@ def test_rn01_nao_aceita_inscricao_em_noticia(banco, cenario):
 
 
 # ---------------------------------------------------------------- RN02 ---
-@pytest.mark.xfail(strict=True, reason=(
+@pytest.mark.xfail(not COM_CORRECAO, strict=True, reason=(
     "DEFEITO D01: a política cv_inscricoes_insert confere só o tipo da "
     "comunicação; não confere status ATIVA nem data_fim. A API aceita "
-    "inscrição em campanha ENCERRADA."))
+    "inscrição em campanha ENCERRADA. Corrigido pela migration "
+    "20261120120000_inscricao_somente_campanha_aberta.sql."))
 def test_rn02_nao_aceita_inscricao_em_campanha_encerrada(banco, cenario):
     with pytest.raises(ErroSql, match=RLS):
         inscrever(banco, cenario["titular_auth"], cenario["titular_id"], cenario["campanha_encerrada"])
+
+
+@pytest.mark.xfail(not COM_CORRECAO, strict=True, reason="DEFEITO D01 (campanha vencida ainda ATIVA).")
+def test_rn02_nao_aceita_inscricao_em_campanha_vencida_antes_do_encerramento(banco, cenario):
+    # Término já passou, mas o pg_cron ainda não rodou (status continua ATIVA).
+    vencida = criar_campanha(banco, "Vencida há 1 hora", fim="now() - interval '1 hour'")
+    with pytest.raises(ErroSql, match=RLS):
+        inscrever(banco, cenario["titular_auth"], cenario["titular_id"], vencida)
+
+
+def test_rn02_cancelar_em_campanha_encerrada_continua_permitido(banco, cenario):
+    banco.admin("insert into public.usuarios_campanhas (usuario_id, comunicacao_id) "
+                f"values ({cenario['titular_id']}, {cenario['campanha_encerrada']});")
+    banco.como(cenario["titular_auth"],
+               f"delete from public.usuarios_campanhas where comunicacao_id = {cenario['campanha_encerrada']};")
+    assert total_inscricoes(banco, cenario["campanha_encerrada"]) == 0
 
 
 def test_rn02_encerramento_automatico_fecha_campanha_vencida(banco, cenario):

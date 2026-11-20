@@ -36,6 +36,12 @@ ARQUIVOS = [
     MIGRATIONS / "20261115160000_regras_de_dependentes.sql",
 ]
 
+# Com COM_CORRECAO=1 também aplica a migration que corrige o defeito D01
+# (reteste de regressão depois da correção).
+COM_CORRECAO = os.environ.get("COM_CORRECAO") == "1"
+if COM_CORRECAO:
+    ARQUIVOS.append(MIGRATIONS / "20261120120000_inscricao_somente_campanha_aberta.sql")
+
 NOME_BANCO = "conecta_vida_teste"
 
 

@@ -34,19 +34,12 @@ diálogo abre e permite marcar dependentes novos. O teste
 `test_rn02_nao_aceita_inscricao_em_campanha_encerrada` fica marcado como
 `xfail` (falha esperada) até a correção.
 
-Correção sugerida (nova migration):
+Correção: migration `supabase/migrations/20261120120000_inscricao_somente_campanha_aberta.sql`
+(neste branch; ainda não aplicada em produção). O workflow roda os testes duas vezes:
 
-```sql
-alter policy cv_inscricoes_insert on public.usuarios_campanhas
-  with check (
-    usuario_id = (select app.usuario_id())
-    and exists (select 1 from public.comunicacoes c
-                where c.id = comunicacao_id and upper(c.tipo) = 'CAMPANHA'
-                  and c.status = 'ATIVA'
-                  and (c.data_fim is null or c.data_fim >= now()))
-    and (dependente_id is null or exists (
-          select 1 from public.dependentes d
-          where d.id = dependente_id and d.ativo and d.status = 'ativo'
-            and d.usuario_titular_id = (select app.usuario_id())))
-  );
-```
+| Execução | Resultado esperado | Relatório |
+| :--- | :--- | :--- |
+| antes da correção | 19 passam, 2 `xfail` (defeito D01 comprovado) | `relatorios/pytest-relatorio-antes-da-correcao.html` |
+| depois da correção | 21 passam (reteste de regressão) | `relatorios/pytest-relatorio-depois-da-correcao.html` |
+
+Para rodar localmente depois da correção: `COM_CORRECAO=1 pytest -v -rxX`.
