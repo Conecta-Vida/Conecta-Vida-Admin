@@ -7,6 +7,9 @@ on:
     branches: [ "qualidade/**" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
@@ -43,3 +46,11 @@ jobs:
         with:
           name: relatorio-testes-banco
           path: qualidade/relatorios/
+      - name: Guardar relatórios no branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f qualidade/relatorios
+          git commit -m "chore(qualidade): relatório dos testes do banco [skip ci]" || exit 0
+          git push
