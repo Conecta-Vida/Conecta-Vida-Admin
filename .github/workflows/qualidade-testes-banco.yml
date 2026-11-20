@@ -1,0 +1,68 @@
+# Trabalho 2 de Qualidade de Software: roda os testes das regras de negócio
+# do caso de uso "Inscrever-se em campanha" contra as migrations reais.
+name: Qualidade - testes do banco (pytest)
+
+on:
+  push:
+    branches: [ "qualidade/**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qualidade-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        versao: [antes-da-correcao, depois-da-correcao]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar pytest
+        run: pip install pytest pytest-html
+      - name: Executar testes (${{ matrix.versao }})
+        working-directory: qualidade/testes_banco
+        env:
+          COM_CORRECAO: ${{ matrix.versao == 'depois-da-correcao' && '1' || '0' }}
+        run: >
+          pytest -v -rxX
+          --junitxml=../relatorios/pytest-junit-${{ matrix.versao }}.xml
+          --html=../relatorios/pytest-relatorio-${{ matrix.versao }}.html --self-contained-html
+      - name: Publicar relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-testes-banco-${{ matrix.versao }}
+          path: qualidade/relatorios/
+      - name: Guardar relatórios no branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f qualidade/relatorios
+          git commit -m "chore(qualidade): relatório dos testes do banco (${{ matrix.versao }}) [skip ci]" || exit 0
+          git pull --rebase -X theirs origin "${GITHUB_REF_NAME}"
+          git push
