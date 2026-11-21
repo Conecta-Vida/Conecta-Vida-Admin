@@ -72,6 +72,10 @@ export interface Campanha {
   status: string;
   /** Instituição de saúde responsável pela campanha. */
   instituicaoId?: number | null;
+  /** Limite de pessoas inscritas; nulo = sem limite. */
+  vagas?: number | null;
+  /** Pessoas inscritas, mantido pelo banco. Somente leitura: nunca é enviado. */
+  inscritos?: number;
 }
 
 export interface InscritoCampanha {
@@ -424,6 +428,7 @@ type LinhaComunicacao = {
   publico_alvo: string | null; status: string | null; lido: boolean | null;
   data_postada: string | null; data_inicio: string | null; data_fim: string | null;
   fonte_url?: string | null;
+  vagas?: number | null; inscritos?: number | null;
 };
 
 const paraCampanha = (l: LinhaComunicacao): Campanha => ({
@@ -439,7 +444,19 @@ const paraCampanha = (l: LinhaComunicacao): Campanha => ({
   publicoAlvo: l.publico_alvo ?? undefined,
   status: l.status ?? 'ATIVA',
   instituicaoId: l.instituicao_id,
+  vagas: l.vagas ?? null,
+  inscritos: l.inscritos ?? 0,
 });
+
+/** Campo "Vagas" do formulário: vazio vira nulo (sem limite), senão o número. */
+export const vagasDoFormulario = (valor: FormDataEntryValue | null): number | null => {
+  const texto = vazioParaNulo(typeof valor === 'string' ? valor.trim() : undefined);
+  return texto === null ? null : Number(texto);
+};
+
+/** Texto de ocupação: "X de Y vagas" ou "X inscritos" quando não há limite. */
+export const rotuloVagas = (inscritos: number, vagas?: number | null): string =>
+  vagas == null ? `${inscritos} inscritos` : `${inscritos} de ${vagas} vagas`;
 
 const campanhaParaBanco = (d: Partial<Campanha>) => ({
   ...(d.titulo !== undefined && { titulo: d.titulo }),
@@ -452,6 +469,8 @@ const campanhaParaBanco = (d: Partial<Campanha>) => ({
   ...(d.dataInicio !== undefined && { data_inicio: dataParaBanco(d.dataInicio) }),
   ...(d.dataFim !== undefined && { data_fim: dataParaBanco(d.dataFim) }),
   ...(d.instituicaoId !== undefined && { instituicao_id: d.instituicaoId }),
+  // "inscritos" é mantido pelos gatilhos do banco: nunca entra na gravação.
+  ...(d.vagas !== undefined && { vagas: d.vagas }),
 });
 
 export const campanhaService = {

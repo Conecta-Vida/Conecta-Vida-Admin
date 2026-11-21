@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Megaphone, ArrowLeft, Loader2, Save, Trash2, Users } from "lucide-react";
-import { campanhaService, type Campanha, type InscritoCampanha } from "../services/api";
+import { campanhaService, vagasDoFormulario, rotuloVagas, type Campanha, type InscritoCampanha } from "../services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ export default function CampanhaDetalhes() {
       titulo: f.get("titulo") as string,
       descricao: f.get("descricao") as string,
       status: f.get("status") as string, 
+      vagas: vagasDoFormulario(f.get("vagas")),
     };
 
     try {
@@ -81,6 +82,7 @@ export default function CampanhaDetalhes() {
                 <option value="AGENDADA">Agendada (Oculta)</option>
               </select>
             </div>
+            <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Vagas (vazio = sem limite)</Label><Input name="vagas" type="number" min={1} defaultValue={campanha.vagas ?? ""} /></div>
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 font-bold text-white h-11 gap-1 shadow mt-4 border-none"><Save className="w-4 h-4" /> Salvar Modificações</Button>
           </form>
         </CardContent>
@@ -92,7 +94,7 @@ export default function CampanhaDetalhes() {
             <Users className="w-5 h-5 text-blue-600" /> Inscritos
           </CardTitle>
           <span className="rounded-full bg-blue-100 px-3 py-0.5 text-xs font-black text-blue-700">
-            {inscritos === null ? "..." : `${inscritos.length} pessoa(s)`}
+            {inscritos === null ? "..." : rotuloVagas(inscritos.length, campanha.vagas)}
           </span>
         </CardHeader>
         <CardContent className="p-0">

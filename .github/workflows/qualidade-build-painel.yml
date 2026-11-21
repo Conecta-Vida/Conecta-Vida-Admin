@@ -1,0 +1,33 @@
+# Trabalho 2 de Qualidade de Software: confere que o painel compila
+# (tsc + vite build) com o campo de vagas da campanha.
+name: Qualidade - build do painel
+
+on:
+  push:
+    branches: [ "qualidade/trabalho2" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualidade-build-painel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: conecta-a-vida-administrativo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: conecta-a-vida-administrativo/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: Compilar o painel
+        run: npm run build

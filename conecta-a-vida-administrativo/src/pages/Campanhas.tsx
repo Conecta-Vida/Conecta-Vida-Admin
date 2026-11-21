@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Megaphone, Calendar, Plus, Users, Layers, Edit2, Trash2, MoreHorizontal } from "lucide-react"; 
 import ImagemUpload from "../components/ImagemUpload";
 import SeletorInstituicao, { instituicaoDoFormulario, useInstituicoes } from "../components/SeletorInstituicao";
-import { campanhaService, type Campanha } from "../services/api";
+import { campanhaService, vagasDoFormulario, rotuloVagas, type Campanha } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ export default function Campanhas() {
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
       linkimagem: (f.get("linkimagem") as string) || "",
+      vagas: vagasDoFormulario(f.get("vagas")),
       instituicaoId: instituicaoDoFormulario(f),
     };
 
@@ -79,6 +80,7 @@ export default function Campanhas() {
       dataInicio: f.get("dataInicio") as string,
       dataFim: f.get("dataFim") as string,
       linkimagem: (f.get("linkimagem") as string) ?? campanhaEditando.linkimagem,
+      vagas: vagasDoFormulario(f.get("vagas")),
       instituicaoId: instituicaoDoFormulario(f),
     };
 
@@ -161,6 +163,7 @@ export default function Campanhas() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Previsão de Término</Label><Input name="dataFim" type="datetime-local" required /></div>
               </div>
+              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Vagas (vazio = sem limite)</Label><Input name="vagas" type="number" min={1} /></div>
               <SeletorInstituicao />
               <ImagemUpload />
               <Button type="submit" className="w-full bg-blue-600 font-bold text-white h-11 shadow mt-4 border-none hover:bg-blue-700">
@@ -215,7 +218,7 @@ export default function Campanhas() {
                   to={`/campanhas/${c.id}`}
                   className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
                 >
-                  <Users className="w-3.5 h-3.5" /> {inscritos[c.id ?? 0] ?? 0} inscrito(s)
+                  <Users className="w-3.5 h-3.5" /> {rotuloVagas(inscritos[c.id ?? 0] ?? 0, c.vagas)}
                 </Link>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                   c.status?.toUpperCase() === "ATIVA"
@@ -272,6 +275,7 @@ export default function Campanhas() {
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Início</Label><Input name="dataInicio" type="datetime-local" defaultValue={campanhaEditando.dataInicio ? campanhaEditando.dataInicio.substring(0, 16) : ""} required /></div>
                 <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Data de Fim</Label><Input name="dataFim" type="datetime-local" defaultValue={campanhaEditando.dataFim ? campanhaEditando.dataFim.substring(0, 16) : ""} required /></div>
               </div>
+              <div className="grid gap-1.5"><Label className="font-bold text-slate-700">Vagas (vazio = sem limite)</Label><Input name="vagas" type="number" min={1} defaultValue={campanhaEditando.vagas ?? ""} /></div>
               <SeletorInstituicao defaultValue={campanhaEditando.instituicaoId} />
               <ImagemUpload defaultValue={campanhaEditando.linkimagem} />
               <Button type="submit" className="w-full bg-amber-500 font-bold text-white h-11 shadow mt-4 border-none hover:bg-amber-600">
