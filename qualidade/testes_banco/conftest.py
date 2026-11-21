@@ -42,6 +42,9 @@ COM_CORRECAO = os.environ.get("COM_CORRECAO") == "1"
 if COM_CORRECAO:
     ARQUIVOS.append(MIGRATIONS / "20261120120000_inscricao_somente_campanha_aberta.sql")
 
+# Vagas por campanha (RN07): entra sempre, com ou sem a correção do D01.
+ARQUIVOS.append(MIGRATIONS / "20261121120000_vagas_por_campanha.sql")
+
 NOME_BANCO = "conecta_vida_teste"
 
 
