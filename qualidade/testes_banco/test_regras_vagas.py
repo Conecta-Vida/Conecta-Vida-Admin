@@ -101,11 +101,11 @@ def test_rn07_excluir_campanha_com_inscritos(banco, cenario):
     assert total_inscricoes(banco, c) == 0
 
 
-def test_rn07_duas_pessoas_disputando_a_ultima_vaga(banco, cenario):
+def test_rn07_duas_pessoas_disputando_a_ultima_vaga(banco, cenario, tmp_path):
     c = cenario["campanha_aberta"]
     definir_vagas(banco, c, 1)
 
-    def sessao(auth_id, usuario_id, segurar):
+    def sessao(nome, auth_id, usuario_id, segurar):
         sql = (
             "begin;\n"
             "set local role authenticated;\n"
@@ -115,16 +115,16 @@ def test_rn07_duas_pessoas_disputando_a_ultima_vaga(banco, cenario):
             + (f"select pg_sleep({segurar}) \\g /dev/null\n" if segurar else "")
             + "commit;\n"
         )
+        roteiro = tmp_path / f"{nome}.sql"
+        roteiro.write_text(sql, encoding="utf-8")
         return subprocess.Popen(
-            ["psql", "-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", banco.banco],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        ), sql
+            ["psql", "-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", banco.banco, "-f", str(roteiro)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
 
-    a, sql_a = sessao(cenario["titular_auth"], cenario["titular_id"], 2)
-    b, sql_b = sessao(cenario["outro_auth"], cenario["outro_id"], 0)
-    a.stdin.write(sql_a); a.stdin.close()
+    a = sessao("a", cenario["titular_auth"], cenario["titular_id"], 2)
     time.sleep(0.5)  # A já inseriu e segura a transação aberta
-    b.stdin.write(sql_b); b.stdin.close()
+    b = sessao("b", cenario["outro_auth"], cenario["outro_id"], 0)
     _, erro_a = a.communicate()
     _, erro_b = b.communicate()
 
