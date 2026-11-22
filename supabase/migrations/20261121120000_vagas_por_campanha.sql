@@ -19,6 +19,9 @@ update public.comunicacoes c
 
 -- Recusa a inscrição quando as vagas acabaram. Trava a linha da campanha
 -- (for update) para que duas inscrições simultâneas sejam conferidas em fila.
+-- A conferência conta as linhas de usuarios_campanhas em vez de ler o
+-- contador: num INSERT de várias linhas o contador só é atualizado no fim do
+-- comando, mas a contagem já enxerga as linhas gravadas antes no mesmo comando.
 -- security definer: o cidadão não tem permissão de ler/travar comunicacoes.
 create or replace function app.conferir_vaga()
 returns trigger language plpgsql security definer set search_path = public
@@ -27,10 +30,23 @@ declare
   v_vagas integer;
   v_inscritos integer;
 begin
-  select vagas, inscritos into v_vagas, v_inscritos
+  select vagas into v_vagas
     from public.comunicacoes
    where id = new.comunicacao_id
      for update;
+
+  -- Inscrição repetida: deixa a restrição de unicidade recusar (23505, que o
+  -- app trata como "já inscrito") em vez de responder "Vagas esgotadas".
+  if exists (select 1 from public.usuarios_campanhas uc
+              where uc.usuario_id = new.usuario_id
+                and uc.comunicacao_id = new.comunicacao_id
+                and uc.dependente_id is not distinct from new.dependente_id) then
+    return new;
+  end if;
+
+  select count(*) into v_inscritos
+    from public.usuarios_campanhas
+   where comunicacao_id = new.comunicacao_id;
 
   if v_vagas is not null and v_inscritos >= v_vagas then
     raise exception 'Vagas esgotadas para esta campanha.';

@@ -52,6 +52,35 @@ def test_rn07_recusa_alem_da_ultima_vaga(banco, cenario):
     assert total_inscricoes(banco, c) == 2
 
 
+def test_rn07_insercao_multipla_respeita_vagas(banco, cenario):
+    # Um único INSERT com titular + dependente (como o app enviaria uma lista):
+    # a segunda linha precisa enxergar a primeira, gravada no mesmo comando.
+    c = cenario["campanha_aberta"]
+    definir_vagas(banco, c, 1)
+    with pytest.raises(ErroSql, match=ESGOTADAS):
+        banco.como(cenario["titular_auth"],
+            "insert into public.usuarios_campanhas (usuario_id, comunicacao_id, dependente_id, notificacao_lida) "
+            f"values ({cenario['titular_id']}, {c}, null, false), "
+            f"({cenario['titular_id']}, {c}, {cenario['dep_menor']}, false);")
+    assert total_inscricoes(banco, c) == 0
+    assert inscritos(banco, c) == 0
+
+
+def test_rn07_duplicada_em_campanha_lotada_e_recusada_como_duplicada(banco, cenario):
+    # Repetir uma inscrição que já existe numa campanha lotada deve dar a
+    # violação de unicidade (23505, que o app trata como "já inscrito"),
+    # e não "Vagas esgotadas".
+    c = cenario["campanha_aberta"]
+    definir_vagas(banco, c, 1)
+    inscrever(banco, cenario["titular_auth"], cenario["titular_id"], c)
+    with pytest.raises(ErroSql) as erro:
+        inscrever(banco, cenario["titular_auth"], cenario["titular_id"], c)
+    assert "uq_usuarios_campanhas_titular_comunicacao" in str(erro.value)
+    assert ESGOTADAS not in str(erro.value)
+    assert total_inscricoes(banco, c) == 1
+    assert inscritos(banco, c) == 1
+
+
 def test_rn07_cancelar_libera_a_vaga(banco, cenario):
     c = cenario["campanha_aberta"]
     definir_vagas(banco, c, 2)
@@ -125,8 +154,8 @@ def test_rn07_duas_pessoas_disputando_a_ultima_vaga(banco, cenario, tmp_path):
     a = sessao("a", cenario["titular_auth"], cenario["titular_id"], 2)
     time.sleep(0.5)  # A já inseriu e segura a transação aberta
     b = sessao("b", cenario["outro_auth"], cenario["outro_id"], 0)
-    _, erro_a = a.communicate()
-    _, erro_b = b.communicate()
+    _, erro_a = a.communicate(timeout=30)
+    _, erro_b = b.communicate(timeout=30)
 
     assert a.returncode == 0, erro_a
     assert b.returncode != 0
