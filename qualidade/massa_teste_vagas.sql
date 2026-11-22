@@ -38,7 +38,9 @@ select id, status, titulo, vagas, inscritos, data_fim from public.comunicacoes
 -- 2c. Passos do gestor que também podem ser feitos pelo painel ---------------
 -- CT #30 (gestor aumenta as vagas):
 -- update public.comunicacoes set vagas = 3 where titulo = '[TESTE QSW] Vagas';
--- CT #31 (gestor reduz as vagas abaixo dos inscritos; ninguém é removido):
+-- CT #31, preparação (campanha com vagas livres para o titular1 inscrever o titular e o Filho QSW):
+-- update public.comunicacoes set vagas = 3 where titulo = '[TESTE QSW] Vagas';
+-- CT #31 (depois, o gestor reduz as vagas abaixo dos inscritos; ninguém é removido):
 -- update public.comunicacoes set vagas = 1 where titulo = '[TESTE QSW] Vagas';
 -- CT #26 a #32 (gestor exclui a campanha no fim; as inscrições somem junto):
 -- delete from public.comunicacoes where titulo = '[TESTE QSW] Vagas';
