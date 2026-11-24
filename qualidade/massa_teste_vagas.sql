@@ -18,9 +18,10 @@ where not exists (select 1 from public.instituicoes_saude where nome = '[TESTE Q
 
 -- 2. Campanha com 2 vagas (CT #26 a #32) ------------------------------------
 with inst as (select id from public.instituicoes_saude where nome = '[TESTE QSW] Secretaria de Saúde')
-insert into public.comunicacoes (tipo, instituicao_id, titulo, descricao, categoria, localizacao, status, data_inicio, data_fim, vagas)
+-- publico_alvo preenchido porque o painel exige o campo para salvar a edição da campanha.
+insert into public.comunicacoes (tipo, instituicao_id, titulo, descricao, categoria, localizacao, publico_alvo, status, data_inicio, data_fim, vagas)
 select 'CAMPANHA', inst.id, '[TESTE QSW] Vagas', 'Campanha aberta com 2 vagas (RN07).', 'Vacinação',
-       'Bragança Paulista', 'ATIVA', now() - interval '5 days', now() + interval '1 day', 2
+       'Bragança Paulista', 'Geral', 'ATIVA', now() - interval '5 days', now() + interval '1 day', 2
 from inst
 where not exists (select 1 from public.comunicacoes where titulo = '[TESTE QSW] Vagas');
 
